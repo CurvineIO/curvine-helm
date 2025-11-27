@@ -75,11 +75,15 @@ jobs:
           echo "chart_name=$(basename $CHART_FILE)" >> $GITHUB_OUTPUT
           echo "Packaged chart: $CHART_FILE"
 
-      - name: Generate chart checksum
+      - name: Generate chart checksum and digest
+        id: checksum
         run: |
           cd helm/dist
           sha256sum *.tgz > checksums.txt
+          DIGEST=$(sha256sum *.tgz | awk '{print $1}')
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
           echo "Generated checksums.txt"
+          echo "Chart Digest (SHA256): $DIGEST"
 
       - name: Determine release type
         id: release
@@ -125,12 +129,15 @@ jobs:
             ### Installation
             
             ```bash
-            helm install curvine ./helm/dist/${{ steps.package.outputs.chart_name }}
+            helm repo add curvineio https://curvineio.github.io/helm-charts
+            helm repo update
+            helm install curvine curvineio/curvine
             ```
             
             ### Files
             - Chart package: `${{ steps.package.outputs.chart_name }}`
             - Checksums: `checksums.txt`
+            - Digest (SHA256): `${{ steps.checksum.outputs.digest }}`
           files: |
             helm/dist/*.tgz
             helm/dist/checksums.txt
@@ -159,12 +166,15 @@ jobs:
             ### Installation
             
             ```bash
-            helm install curvine ./helm/dist/${{ steps.package.outputs.chart_name }}
+            helm repo add curvineio https://curvineio.github.io/helm-charts
+            helm repo update
+            helm install curvine curvineio/curvine
             ```
             
             ### Files
             - Chart package: `${{ steps.package.outputs.chart_name }}`
             - Checksums: `checksums.txt`
+            - Digest (SHA256): `${{ steps.checksum.outputs.digest }}`
             
             > **Note**: This is an automatically updated release. For stable versions, use tagged releases (v*).
           files: |
@@ -190,6 +200,7 @@ jobs:
           echo "- **Tag/Version**: ${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Chart Version**: ${{ steps.tag.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Chart Package**: ${{ steps.package.outputs.chart_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Digest (SHA256)**: ${{ steps.checksum.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release Type**: ${{ steps.release.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release Tag**: ${{ steps.release.outputs.release_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Is Tag**: ${{ steps.tag.outputs.is_tag }}" >> $GITHUB_STEP_SUMMARY

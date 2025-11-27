@@ -46,8 +46,8 @@ jobs:
           if [[ "$TAG" == v* ]]; then
             VERSION=${TAG#v}
           elif [ "$IS_MAIN_BRANCH" == "true" ]; then
-            # For main branch, use commit SHA as version identifier
-            VERSION="main-${GITHUB_SHA:0:7}"
+            # For main branch, will be set in next step after reading Chart.yaml
+            VERSION=""
           else
             VERSION=$TAG
           fi
@@ -59,6 +59,48 @@ jobs:
           echo "Tag/Version: $TAG ($VERSION)"
           echo "Is Tag: $IS_TAG"
           echo "Is Main Branch: $IS_MAIN_BRANCH"
+
+      - name: Prepare pre-release version for main branch
+        if: steps.tag.outputs.is_main_branch == 'true'
+        id: prerelease
+        run: |
+          # Read current version from Chart.yaml
+          CURRENT_VERSION=$(grep '^version:' helm/Chart.yaml | awk '{print $2}' | tr -d '"')
+          echo "Current Chart version: $CURRENT_VERSION"
+          
+          # Extract base version (remove any pre-release suffix like -alpha.1, -dev+abc123, etc.)
+          # Examples: 0.2.0 -> 0.2.0, 0.2.0-alpha.1 -> 0.2.0, 0.2.1-dev+abc123 -> 0.2.1
+          BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/-.*//')
+          echo "Base version: $BASE_VERSION"
+          
+          # Parse version components (MAJOR.MINOR.PATCH)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
+          
+          # Generate pre-release version: increment patch and add -dev suffix
+          # Format: MAJOR.MINOR.(PATCH+1)-dev+COMMIT_SHA
+          NEW_PATCH=$((PATCH + 1))
+          PRE_RELEASE_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}-dev+${GITHUB_SHA:0:7}"
+          
+          echo "Pre-release version: $PRE_RELEASE_VERSION"
+          echo "version=$PRE_RELEASE_VERSION" >> $GITHUB_OUTPUT
+          
+          # Update Chart.yaml with pre-release version
+          # GitHub Actions runs on Linux, so use Linux sed syntax
+          sed -i "s/^version:.*/version: $PRE_RELEASE_VERSION/" helm/Chart.yaml
+          
+          echo "Updated Chart.yaml version to: $PRE_RELEASE_VERSION"
+          cat helm/Chart.yaml
+
+      - name: Set final version
+        id: version
+        run: |
+          if [ "${{ steps.tag.outputs.is_main_branch }}" == "true" ]; then
+            FINAL_VERSION="${{ steps.prerelease.outputs.version }}"
+          else
+            FINAL_VERSION="${{ steps.tag.outputs.version }}"
+          fi
+          echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
+          echo "Final Chart Version: $FINAL_VERSION"
 
       - name: Validate Helm chart
         run: |
@@ -122,7 +164,7 @@ jobs:
             ## Helm Chart Release ${{ steps.release.outputs.release_tag }}
             
             ### Chart Information
-            - **Chart Version**: ${{ steps.tag.outputs.version }}
+            - **Chart Version**: ${{ steps.version.outputs.version }}
             - **Tag**: ${{ steps.release.outputs.release_tag }}
             - **Commit**: ${{ github.sha }}
             
@@ -158,7 +200,7 @@ jobs:
             This release is automatically updated on every push to the `main` branch.
             
             ### Chart Information
-            - **Version**: ${{ steps.tag.outputs.version }}
+            - **Chart Version**: ${{ steps.version.outputs.version }}
             - **Branch**: main
             - **Commit**: ${{ github.sha }}
             - **Commit Message**: ${{ github.event.head_commit.message }}
@@ -198,7 +240,7 @@ jobs:
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Tag/Version**: ${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Chart Version**: ${{ steps.tag.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chart Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Chart Package**: ${{ steps.package.outputs.chart_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Digest (SHA256)**: ${{ steps.checksum.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release Type**: ${{ steps.release.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY

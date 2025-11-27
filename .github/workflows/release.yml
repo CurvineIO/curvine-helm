@@ -2,8 +2,10 @@ name: Build and Release Helm Chart
 
 on:
   push:
+    branches:
+      - main  # Main branch updates
     tags:
-      - 'v*'
+      - 'v*'  # v* tags for release
 
 jobs:
   build-and-release:
@@ -18,18 +20,45 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Helm
-        uses: helm/setup-helm-action@v3
+        uses: azure/setup-helm@v4.3.0
         with:
           version: 'latest'
 
-      - name: Extract tag version
+      - name: Extract tag/version information
         id: tag
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
+          # Handle tag push
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+            IS_TAG=true
+            IS_MAIN_BRANCH=false
+          # Handle main branch push
+          elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            TAG="latest"
+            IS_TAG=false
+            IS_MAIN_BRANCH=true
+          else
+            echo "Error: Unexpected ref: $GITHUB_REF"
+            exit 1
+          fi
+          
+          # Extract version from tag (remove 'v' prefix if present)
+          if [[ "$TAG" == v* ]]; then
+            VERSION=${TAG#v}
+          elif [ "$IS_MAIN_BRANCH" == "true" ]; then
+            # For main branch, use commit SHA as version identifier
+            VERSION="main-${GITHUB_SHA:0:7}"
+          else
+            VERSION=$TAG
+          fi
+          
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
-          echo "Tag: $TAG"
-          echo "Version: ${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_tag=$IS_TAG" >> $GITHUB_OUTPUT
+          echo "is_main_branch=$IS_MAIN_BRANCH" >> $GITHUB_OUTPUT
+          echo "Tag/Version: $TAG ($VERSION)"
+          echo "Is Tag: $IS_TAG"
+          echo "Is Main Branch: $IS_MAIN_BRANCH"
 
       - name: Validate Helm chart
         run: |
@@ -52,16 +81,46 @@ jobs:
           sha256sum *.tgz > checksums.txt
           echo "Generated checksums.txt"
 
-      - name: Create GitHub Release
+      - name: Determine release type
+        id: release
+        run: |
+          IS_V_TAG=false
+          if [[ "${{ steps.tag.outputs.tag }}" == v* ]]; then
+            IS_V_TAG=true
+          fi
+          
+          # v* tags create normal releases
+          # main branch updates create/update "latest" release
+          if [ "${{ steps.tag.outputs.is_tag }}" == "true" ] && [ "$IS_V_TAG" == "true" ]; then
+            RELEASE_TYPE="tag"
+            RELEASE_TAG="${{ steps.tag.outputs.tag }}"
+          elif [ "${{ steps.tag.outputs.is_main_branch }}" == "true" ]; then
+            RELEASE_TYPE="latest"
+            RELEASE_TAG="latest"
+          else
+            RELEASE_TYPE="none"
+            RELEASE_TAG=""
+          fi
+          
+          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "should_release=$([ "$RELEASE_TYPE" != "none" ] && echo "true" || echo "false")" >> $GITHUB_OUTPUT
+          echo "Release Type: $RELEASE_TYPE"
+          echo "Release Tag: $RELEASE_TAG"
+
+      - name: Create/Update GitHub Release (v* tag)
+        if: steps.release.outputs.release_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ steps.tag.outputs.tag }}
+          tag_name: ${{ steps.release.outputs.release_tag }}
+          name: Release ${{ steps.release.outputs.release_tag }}
           body: |
-            ## Helm Chart Release ${{ steps.tag.outputs.tag }}
+            ## Helm Chart Release ${{ steps.release.outputs.release_tag }}
             
             ### Chart Information
             - **Chart Version**: ${{ steps.tag.outputs.version }}
-            - **Tag**: ${{ steps.tag.outputs.tag }}
+            - **Tag**: ${{ steps.release.outputs.release_tag }}
+            - **Commit**: ${{ github.sha }}
             
             ### Installation
             
@@ -76,7 +135,43 @@ jobs:
             helm/dist/*.tgz
             helm/dist/checksums.txt
           draft: false
-          prerelease: ${{ contains(steps.tag.outputs.tag, '-') || contains(steps.tag.outputs.tag, 'alpha') || contains(steps.tag.outputs.tag, 'beta') || contains(steps.tag.outputs.tag, 'rc') }}
+          prerelease: ${{ contains(steps.release.outputs.release_tag, '-') || contains(steps.release.outputs.release_tag, 'alpha') || contains(steps.release.outputs.release_tag, 'beta') || contains(steps.release.outputs.release_tag, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create/Update GitHub Release (main branch -> latest)
+        if: steps.release.outputs.release_type == 'latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Release (main branch)
+          body: |
+            ## Latest Helm Chart Release
+            
+            This release is automatically updated on every push to the `main` branch.
+            
+            ### Chart Information
+            - **Version**: ${{ steps.tag.outputs.version }}
+            - **Branch**: main
+            - **Commit**: ${{ github.sha }}
+            - **Commit Message**: ${{ github.event.head_commit.message }}
+            
+            ### Installation
+            
+            ```bash
+            helm install curvine ./helm/dist/${{ steps.package.outputs.chart_name }}
+            ```
+            
+            ### Files
+            - Chart package: `${{ steps.package.outputs.chart_name }}`
+            - Checksums: `checksums.txt`
+            
+            > **Note**: This is an automatically updated release. For stable versions, use tagged releases (v*).
+          files: |
+            helm/dist/*.tgz
+            helm/dist/checksums.txt
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -88,4 +183,16 @@ jobs:
             helm/dist/*.tgz
             helm/dist/checksums.txt
           retention-days: 90
+      
+      - name: Build Summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag/Version**: ${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chart Version**: ${{ steps.tag.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chart Package**: ${{ steps.package.outputs.chart_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release Type**: ${{ steps.release.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release Tag**: ${{ steps.release.outputs.release_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Is Tag**: ${{ steps.tag.outputs.is_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Is Main Branch**: ${{ steps.tag.outputs.is_main_branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Release Created**: ${{ steps.release.outputs.should_release }}" >> $GITHUB_STEP_SUMMARY
 

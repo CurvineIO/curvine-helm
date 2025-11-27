@@ -1,0 +1,91 @@
+name: Build and Release Helm Chart
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: helm/setup-helm-action@v3
+        with:
+          version: 'latest'
+
+      - name: Extract tag version
+        id: tag
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG"
+          echo "Version: ${TAG#v}"
+
+      - name: Validate Helm chart
+        run: |
+          cd helm
+          helm lint .
+
+      - name: Package Helm chart
+        id: package
+        run: |
+          cd helm
+          helm package . --destination ./dist
+          CHART_FILE=$(ls ./dist/*.tgz)
+          echo "chart_file=$CHART_FILE" >> $GITHUB_OUTPUT
+          echo "chart_name=$(basename $CHART_FILE)" >> $GITHUB_OUTPUT
+          echo "Packaged chart: $CHART_FILE"
+
+      - name: Generate chart checksum
+        run: |
+          cd helm/dist
+          sha256sum *.tgz > checksums.txt
+          echo "Generated checksums.txt"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.tag.outputs.tag }}
+          body: |
+            ## Helm Chart Release ${{ steps.tag.outputs.tag }}
+            
+            ### Chart Information
+            - **Chart Version**: ${{ steps.tag.outputs.version }}
+            - **Tag**: ${{ steps.tag.outputs.tag }}
+            
+            ### Installation
+            
+            ```bash
+            helm install curvine ./helm/dist/${{ steps.package.outputs.chart_name }}
+            ```
+            
+            ### Files
+            - Chart package: `${{ steps.package.outputs.chart_name }}`
+            - Checksums: `checksums.txt`
+          files: |
+            helm/dist/*.tgz
+            helm/dist/checksums.txt
+          draft: false
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-') || contains(steps.tag.outputs.tag, 'alpha') || contains(steps.tag.outputs.tag, 'beta') || contains(steps.tag.outputs.tag, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload chart artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-chart-${{ steps.tag.outputs.tag }}
+          path: |
+            helm/dist/*.tgz
+            helm/dist/checksums.txt
+          retention-days: 90
+

@@ -11,7 +11,7 @@ cluster:
 
 # Image configuration
 image:
-  repository: docker.io/curvine
+  repository: ghcr.io/curvineio/curvine
   tag: "latest"
   pullPolicy: IfNotPresent
   pullSecrets: []

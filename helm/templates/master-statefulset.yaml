@@ -31,7 +31,6 @@ spec:
     spec:
       serviceAccountName: {{ include "curvine.serviceAccountName" . }}
       {{- include "curvine.imagePullSecrets" . | nindent 6 }}
-      setHostnameAsFQDN: true
       containers:
         - name: master
           image: {{ include "curvine.image" . }}

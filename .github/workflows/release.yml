@@ -378,14 +378,41 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Extract version from tag
+      - name: Extract version/tag information
         id: version
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          VERSION=${TAG#v}
+          # Determine the release tag based on trigger type
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            # For tag push: use the tag name
+            TAG=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG#v}
+          elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            # For main branch: use "latest" as release tag
+            TAG="latest"
+            VERSION="latest"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # For manual trigger: determine from inputs.ref
+            REF="${{ inputs.ref }}"
+            if [[ "$REF" == v* ]]; then
+              TAG="$REF"
+              VERSION="${REF#v}"
+            elif [[ "$REF" == "main" ]] || [[ -z "$REF" ]]; then
+              TAG="latest"
+              VERSION="latest"
+            else
+              # For other branches, use latest
+              TAG="latest"
+              VERSION="latest"
+            fi
+          else
+            TAG="latest"
+            VERSION="latest"
+          fi
+          
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Updating Helm repo for version: $VERSION"
+          echo "Release tag for download: $TAG"
+          echo "Version: $VERSION"
 
       - name: Create charts directory if not exists
         run: |

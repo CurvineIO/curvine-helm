@@ -6,8 +6,6 @@ on:
       - main  # Main branch updates
     tags:
       - 'v*'  # v* tags for release
-    paths-ignore:
-      - 'charts/**'  # Ignore changes to charts directory to prevent infinite loop
   workflow_dispatch:
     inputs:
       ref:
@@ -261,14 +259,14 @@ jobs:
             
             #### Curvine Runtime
             ```bash
-            helm repo add curvineio https://curvineio.github.io/helm-charts
+            helm repo add curvineio https://curvineio.github.io/curvine-doc/helm-charts
             helm repo update
             helm install curvine curvineio/curvine-runtime
             ```
             
             #### Curvine CSI Driver
             ```bash
-            helm repo add curvineio https://curvineio.github.io/helm-charts
+            helm repo add curvineio https://curvineio.github.io/curvine-doc/helm-charts
             helm repo update
             helm install curvine-csi curvineio/curvine-csi
             ```
@@ -333,7 +331,7 @@ jobs:
           prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Release Summary
         run: |
           echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
@@ -348,24 +346,16 @@ jobs:
           echo "### Checksums" >> $GITHUB_STEP_SUMMARY
           cat dist/checksums.txt >> $GITHUB_STEP_SUMMARY
 
-  update-helm-repo:
+  sync-to-helm-repo:
     needs: create-release
-    # Update helm repository for version tags (v*) or manual dispatch
-    if: always() && needs.create-release.result == 'success'
+    # Only sync when manually triggered with sync_to_doc=true
+    if: always() && needs.create-release.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.sync_to_doc == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
     
     steps:
-      - name: Checkout curvine-helm repository
-        uses: actions/checkout@v4
-        with:
-          path: curvine-helm
-          fetch-depth: 0
-
       - name: Checkout curvine-doc repository
-        # Only checkout curvine-doc if syncing is enabled
-        if: github.event_name == 'workflow_dispatch' && inputs.sync_to_doc == true
         uses: actions/checkout@v4
         with:
           repository: CurvineIO/curvine-doc
@@ -411,105 +401,72 @@ jobs:
           
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Release tag for download: $TAG"
+          echo "Release tag: $TAG"
           echo "Version: $VERSION"
 
-      - name: Create charts directory if not exists
+      - name: Download old index.yaml from curvine-doc
         run: |
-          cd curvine-helm
-          mkdir -p charts
-          echo "Charts directory ready"
-
-      - name: Download chart packages from release
-        run: |
-          cd curvine-helm/charts
+          mkdir -p temp-charts
+          cd temp-charts
           
-          # Download chart packages from the just-created release
+          # Try to download existing index.yaml
+          echo "Downloading existing index.yaml from curvine-doc..."
+          curl -fsSL https://curvineio.github.io/curvine-doc/helm-charts/index.yaml -o old-index.yaml || {
+            echo "No existing index.yaml found, will create new one"
+            touch old-index.yaml
+          }
+          
+          if [ -s old-index.yaml ]; then
+            echo "Existing index.yaml found:"
+            head -20 old-index.yaml
+          else
+            echo "Creating new index.yaml"
+          fi
+
+      - name: Download current release charts
+        run: |
+          cd temp-charts
+          
           RELEASE_TAG="${{ steps.version.outputs.tag }}"
           echo "Downloading charts from release: $RELEASE_TAG"
           
           # Download using GitHub CLI
           gh release download "$RELEASE_TAG" \
             --repo CurvineIO/curvine-helm \
-            --pattern "*.tgz" \
-            --skip-existing
+            --pattern "*.tgz"
           
           echo "Downloaded charts:"
-          ls -lh *.tgz | tail -10
+          ls -lh *.tgz
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update Helm repository index in curvine-helm
+      - name: Generate merged index.yaml with Release URLs
         run: |
-          cd curvine-helm/charts
+          cd temp-charts
           
-          echo "Current charts in curvine-helm repository:"
-          ls -lh *.tgz 2>/dev/null || echo "No existing charts"
+          RELEASE_TAG="${{ steps.version.outputs.tag }}"
           
-          # Generate/update index.yaml
-          # Chart packages are served from curvine-helm GitHub Pages
-          helm repo index . --url https://curvineio.github.io/curvine-helm/charts
+          # Generate index.yaml with Release URLs
+          # URL format: https://github.com/CurvineIO/curvine-helm/releases/download/{tag}/
+          helm repo index . \
+            --url "https://github.com/CurvineIO/curvine-helm/releases/download/${RELEASE_TAG}" \
+            --merge old-index.yaml
           
-          echo "Generated index.yaml (first 50 lines):"
-          head -50 index.yaml
+          echo "Generated merged index.yaml (first 100 lines):"
+          head -100 index.yaml
+          
+          echo ""
+          echo "Entries count:"
+          grep -c "version:" index.yaml || echo "0"
 
-      - name: Commit and push charts to curvine-helm
+      - name: Copy index.yaml to curvine-doc
         run: |
-          cd curvine-helm
-          
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git add charts/
-          
-          # Check if there are changes to commit
-          if git diff --staged --quiet; then
-            echo "No changes to curvine-helm charts"
-          else
-            COMMIT_MSG="chore(helm): add charts from release ${{ steps.version.outputs.tag }} [skip ci]
-            
-            Auto-generated by GitHub Actions
-            Commit: ${{ github.sha }}
-            Release: ${{ steps.version.outputs.tag }}"
-            
-            git commit -m "$COMMIT_MSG"
-            git push
-            echo "Successfully pushed charts to curvine-helm repository"
-          fi
-
-      - name: Determine sync decision
-        id: sync
-        run: |
-          SHOULD_SYNC=false
-          SYNC_REASON=""
-          
-          # Only sync when manually triggered with sync_to_doc=true
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ "${{ inputs.sync_to_doc }}" == "true" ]]; then
-            SHOULD_SYNC=true
-            SYNC_REASON="Manual dispatch with sync enabled"
-          elif [[ "${{ github.event_name }}" == "push" ]]; then
-            SHOULD_SYNC=false
-            SYNC_REASON="Push event (use manual dispatch to sync)"
-          else
-            SYNC_REASON="Manual dispatch with sync disabled"
-          fi
-          
-          echo "should_sync=$SHOULD_SYNC" >> $GITHUB_OUTPUT
-          echo "sync_reason=$SYNC_REASON" >> $GITHUB_OUTPUT
-          echo "Sync to curvine-doc: $SHOULD_SYNC"
-          echo "Reason: $SYNC_REASON"
-
-      - name: Sync index.yaml to curvine-doc
-        if: steps.sync.outputs.should_sync == 'true'
-        run: |
-          # Copy index.yaml to curvine-doc repository
           mkdir -p curvine-doc/static/helm-charts
-          cp curvine-helm/charts/index.yaml curvine-doc/static/helm-charts/index.yaml
+          cp temp-charts/index.yaml curvine-doc/static/helm-charts/index.yaml
           
-          echo "Synced index.yaml to curvine-doc"
+          echo "✅ Copied merged index.yaml to curvine-doc/static/helm-charts/"
 
-      - name: Commit and push index to curvine-doc
-        if: steps.sync.outputs.should_sync == 'true'
+      - name: Commit and push to curvine-doc
         run: |
           cd curvine-doc
           
@@ -520,47 +477,43 @@ jobs:
           
           # Check if there are changes to commit
           if git diff --staged --quiet; then
-            echo "No changes to curvine-doc index"
+            echo "No changes to index.yaml"
           else
-            COMMIT_MSG="chore(helm): update index.yaml from curvine-helm ${{ steps.version.outputs.tag }}
+            COMMIT_MSG="chore(helm): update index.yaml from release ${{ steps.version.outputs.tag }}
             
             Auto-generated by GitHub Actions
             Source: CurvineIO/curvine-helm@${{ github.sha }}
-            Release: ${{ steps.version.outputs.tag }}"
+            Release: ${{ steps.version.outputs.tag }}
+            
+            This index.yaml includes all historical versions with URLs pointing to GitHub Releases."
             
             git commit -m "$COMMIT_MSG"
             git push
-            echo "Successfully pushed index.yaml to curvine-doc repository"
+            echo "✅ Successfully pushed index.yaml to curvine-doc repository"
           fi
 
-      - name: Helm Repository Summary
+      - name: Sync Summary
         run: |
-          echo "## Helm Repository Updated" >> $GITHUB_STEP_SUMMARY
+          echo "## Helm Repository Sync Complete" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release Tag**: ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Synced successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Local Repository (curvine-helm)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: ✅ Always updated" >> $GITHUB_STEP_SUMMARY
-          echo "- **Location**: curvine-helm/charts/" >> $GITHUB_STEP_SUMMARY
-          echo "- **Charts URL**: https://curvineio.github.io/curvine-helm/charts/" >> $GITHUB_STEP_SUMMARY
-          echo "- **Index URL**: https://curvineio.github.io/curvine-helm/charts/index.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "### Architecture" >> $GITHUB_STEP_SUMMARY
+          echo "- **Charts Storage**: GitHub Releases (curvine-helm)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Index Location**: curvine-doc/static/helm-charts/index.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chart URLs**: Point to GitHub Releases" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Remote Sync (curvine-doc)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Synced**: ${{ steps.sync.outputs.should_sync }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Reason**: ${{ steps.sync.outputs.sync_reason }}" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ steps.sync.outputs.should_sync }}" == "true" ]]; then
-            echo "- **Index URL**: https://curvineio.github.io/curvine-doc/helm-charts/index.yaml" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "> ✅ index.yaml has been synced to curvine-doc repository" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "> ℹ️ To sync index.yaml to curvine-doc, use 'Run workflow' and check 'Sync to curvine-doc'" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- **Index**: https://curvineio.github.io/curvine-doc/helm-charts/index.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "- **Charts**: https://github.com/CurvineIO/curvine-helm/releases" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "helm repo add curvineio https://curvineio.github.io/curvine-helm/charts" >> $GITHUB_STEP_SUMMARY
+          echo "helm repo add curvineio https://curvineio.github.io/curvine-doc/helm-charts" >> $GITHUB_STEP_SUMMARY
           echo "helm repo update" >> $GITHUB_STEP_SUMMARY
           echo "helm search repo curvineio" >> $GITHUB_STEP_SUMMARY
+          echo "helm install curvine curvineio/curvine-runtime" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+
 

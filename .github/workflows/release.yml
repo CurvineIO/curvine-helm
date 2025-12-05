@@ -78,13 +78,10 @@ jobs:
           BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/-.*//')
           echo "Base version: $BASE_VERSION"
           
-          # Parse version components (MAJOR.MINOR.PATCH)
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
-          
-          # Generate pre-release version: increment patch and add -dev suffix
-          # Format: MAJOR.MINOR.(PATCH+1)-dev+COMMIT_SHA
-          NEW_PATCH=$((PATCH + 1))
-          PRE_RELEASE_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}-dev+${GITHUB_SHA:0:7}"
+          # Generate pre-release version: use base version + -dev suffix (NO version increment)
+          # Format: BASE_VERSION-dev+COMMIT_SHA
+          # This ensures dev versions never conflict with future release versions
+          PRE_RELEASE_VERSION="${BASE_VERSION}-dev+${GITHUB_SHA:0:7}"
           
           echo "Pre-release version: $PRE_RELEASE_VERSION"
           echo "version=$PRE_RELEASE_VERSION" >> $GITHUB_OUTPUT

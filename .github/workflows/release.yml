@@ -446,13 +446,21 @@ jobs:
           
           RELEASE_TAG="${{ steps.version.outputs.tag }}"
           
-          # Generate index.yaml with Release URLs
-          # URL format: https://github.com/CurvineIO/curvine-helm/releases/download/{tag}/
-          helm repo index . \
-            --url "https://github.com/CurvineIO/curvine-helm/releases/download/${RELEASE_TAG}" \
-            --merge old-index.yaml
+          # Check if old-index.yaml exists and is not empty
+          if [ -s old-index.yaml ]; then
+            echo "Merging with existing index.yaml..."
+            # Generate index.yaml with Release URLs and merge with old index
+            helm repo index . \
+              --url "https://github.com/CurvineIO/curvine-helm/releases/download/${RELEASE_TAG}" \
+              --merge old-index.yaml
+          else
+            echo "Creating new index.yaml (no existing index found)..."
+            # Generate new index.yaml without merging
+            helm repo index . \
+              --url "https://github.com/CurvineIO/curvine-helm/releases/download/${RELEASE_TAG}"
+          fi
           
-          echo "Generated merged index.yaml (first 100 lines):"
+          echo "Generated index.yaml (first 100 lines):"
           head -100 index.yaml
           
           echo ""

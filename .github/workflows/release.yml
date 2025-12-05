@@ -8,10 +8,15 @@ on:
       - 'v*'  # v* tags for release
 
 jobs:
-  build-and-release:
+  build-charts:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    strategy:
+      matrix:
+        chart:
+          - name: curvine-csi
+            path: curvine-csi
+          - name: curvine-runtime
+            path: curvine-runtime
     
     steps:
       - name: Checkout code
@@ -65,8 +70,8 @@ jobs:
         id: prerelease
         run: |
           # Read current version from Chart.yaml
-          CURRENT_VERSION=$(grep '^version:' helm/Chart.yaml | awk '{print $2}' | tr -d '"')
-          echo "Current Chart version: $CURRENT_VERSION"
+          CURRENT_VERSION=$(grep '^version:' ${{ matrix.chart.path }}/Chart.yaml | awk '{print $2}' | tr -d '"')
+          echo "Current Chart version for ${{ matrix.chart.name }}: $CURRENT_VERSION"
           
           # Extract base version (remove any pre-release suffix like -alpha.1, -dev+abc123, etc.)
           # Examples: 0.2.0 -> 0.2.0, 0.2.0-alpha.1 -> 0.2.0, 0.2.1-dev+abc123 -> 0.2.1
@@ -86,10 +91,10 @@ jobs:
           
           # Update Chart.yaml with pre-release version
           # GitHub Actions runs on Linux, so use Linux sed syntax
-          sed -i "s/^version:.*/version: $PRE_RELEASE_VERSION/" helm/Chart.yaml
+          sed -i "s/^version:.*/version: $PRE_RELEASE_VERSION/" ${{ matrix.chart.path }}/Chart.yaml
           
           echo "Updated Chart.yaml version to: $PRE_RELEASE_VERSION"
-          cat helm/Chart.yaml
+          cat ${{ matrix.chart.path }}/Chart.yaml
 
       - name: Set final version
         id: version
@@ -104,28 +109,96 @@ jobs:
 
       - name: Validate Helm chart
         run: |
-          cd helm
+          cd ${{ matrix.chart.path }}
           helm lint .
 
       - name: Package Helm chart
         id: package
         run: |
-          cd helm
-          helm package . --destination ./dist
-          CHART_FILE=$(ls ./dist/*.tgz)
-          echo "chart_file=$CHART_FILE" >> $GITHUB_OUTPUT
-          echo "chart_name=$(basename $CHART_FILE)" >> $GITHUB_OUTPUT
-          echo "Packaged chart: $CHART_FILE"
+          mkdir -p dist
+          cd ${{ matrix.chart.path }}
+          helm package . --destination ../dist
+          cd ../dist
+          CHART_FILE=$(ls *.tgz)
+          echo "chart_file=dist/$CHART_FILE" >> $GITHUB_OUTPUT
+          echo "chart_name=$CHART_FILE" >> $GITHUB_OUTPUT
+          echo "Packaged chart for ${{ matrix.chart.name }}: $CHART_FILE"
 
-      - name: Generate chart checksum and digest
+      - name: Generate chart checksum
         id: checksum
         run: |
-          cd helm/dist
-          sha256sum *.tgz > checksums.txt
+          cd dist
           DIGEST=$(sha256sum *.tgz | awk '{print $1}')
           echo "digest=$DIGEST" >> $GITHUB_OUTPUT
-          echo "Generated checksums.txt"
-          echo "Chart Digest (SHA256): $DIGEST"
+          echo "${{ matrix.chart.name }} Digest (SHA256): $DIGEST"
+
+      - name: Upload chart artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.chart.name }}-${{ steps.tag.outputs.tag }}
+          path: dist/*.tgz
+          retention-days: 90
+      
+      - name: Build Summary
+        run: |
+          echo "## Build Summary - ${{ matrix.chart.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chart**: ${{ matrix.chart.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag/Version**: ${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chart Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Chart Package**: ${{ steps.package.outputs.chart_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Digest (SHA256)**: ${{ steps.checksum.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+
+  create-release:
+    needs: build-charts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract tag/version information
+        id: tag
+        run: |
+          # Handle tag push
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+            IS_TAG=true
+            IS_MAIN_BRANCH=false
+          # Handle main branch push
+          elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            TAG="latest"
+            IS_TAG=false
+            IS_MAIN_BRANCH=true
+          else
+            echo "Error: Unexpected ref: $GITHUB_REF"
+            exit 1
+          fi
+          
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "is_tag=$IS_TAG" >> $GITHUB_OUTPUT
+          echo "is_main_branch=$IS_MAIN_BRANCH" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG"
+          echo "Is Tag: $IS_TAG"
+          echo "Is Main Branch: $IS_MAIN_BRANCH"
+
+      - name: Download all chart artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: '*-${{ steps.tag.outputs.tag }}'
+          merge-multiple: true
+
+      - name: Generate unified checksums
+        id: checksums
+        run: |
+          cd dist
+          sha256sum *.tgz > checksums.txt
+          echo "Generated unified checksums.txt:"
+          cat checksums.txt
 
       - name: Determine release type
         id: release
@@ -161,28 +234,39 @@ jobs:
           tag_name: ${{ steps.release.outputs.release_tag }}
           name: Release ${{ steps.release.outputs.release_tag }}
           body: |
-            ## Helm Chart Release ${{ steps.release.outputs.release_tag }}
+            ## Helm Charts Release ${{ steps.release.outputs.release_tag }}
             
             ### Chart Information
-            - **Chart Version**: ${{ steps.version.outputs.version }}
             - **Tag**: ${{ steps.release.outputs.release_tag }}
             - **Commit**: ${{ github.sha }}
             
+            This release includes two Helm charts:
+            - **curvine-csi**: CSI Driver for Curvine storage
+            - **curvine-runtime**: Curvine distributed cache system
+            
             ### Installation
             
+            #### Curvine Runtime
             ```bash
             helm repo add curvineio https://curvineio.github.io/helm-charts
             helm repo update
-            helm install curvine curvineio/curvine
+            helm install curvine curvineio/curvine-runtime
+            ```
+            
+            #### Curvine CSI Driver
+            ```bash
+            helm repo add curvineio https://curvineio.github.io/helm-charts
+            helm repo update
+            helm install curvine-csi curvineio/curvine-csi
             ```
             
             ### Files
-            - Chart package: `${{ steps.package.outputs.chart_name }}`
-            - Checksums: `checksums.txt`
-            - Digest (SHA256): `${{ steps.checksum.outputs.digest }}`
+            - curvine-csi chart package
+            - curvine-runtime chart package
+            - checksums.txt (SHA256 checksums for both charts)
           files: |
-            helm/dist/*.tgz
-            helm/dist/checksums.txt
+            dist/*.tgz
+            dist/checksums.txt
           draft: false
           prerelease: ${{ contains(steps.release.outputs.release_tag, '-') || contains(steps.release.outputs.release_tag, 'alpha') || contains(steps.release.outputs.release_tag, 'beta') || contains(steps.release.outputs.release_tag, 'rc') }}
         env:
@@ -195,57 +279,60 @@ jobs:
           tag_name: latest
           name: Latest Release (main branch)
           body: |
-            ## Latest Helm Chart Release
+            ## Latest Helm Charts Release
             
             This release is automatically updated on every push to the `main` branch.
             
             ### Chart Information
-            - **Chart Version**: ${{ steps.version.outputs.version }}
             - **Branch**: main
             - **Commit**: ${{ github.sha }}
             - **Commit Message**: ${{ github.event.head_commit.message }}
             
+            This release includes two Helm charts:
+            - **curvine-csi**: CSI Driver for Curvine storage
+            - **curvine-runtime**: Curvine distributed cache system
+            
             ### Installation
             
+            #### Curvine Runtime
             ```bash
             helm repo add curvineio https://curvineio.github.io/helm-charts
             helm repo update
-            helm install curvine curvineio/curvine
+            helm install curvine curvineio/curvine-runtime
+            ```
+            
+            #### Curvine CSI Driver
+            ```bash
+            helm repo add curvineio https://curvineio.github.io/helm-charts
+            helm repo update
+            helm install curvine-csi curvineio/curvine-csi
             ```
             
             ### Files
-            - Chart package: `${{ steps.package.outputs.chart_name }}`
-            - Checksums: `checksums.txt`
-            - Digest (SHA256): `${{ steps.checksum.outputs.digest }}`
+            - curvine-csi chart package
+            - curvine-runtime chart package
+            - checksums.txt (SHA256 checksums for both charts)
             
             > **Note**: This is an automatically updated release. For stable versions, use tagged releases (v*).
           files: |
-            helm/dist/*.tgz
-            helm/dist/checksums.txt
+            dist/*.tgz
+            dist/checksums.txt
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload chart artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: helm-chart-${{ steps.tag.outputs.tag }}
-          path: |
-            helm/dist/*.tgz
-            helm/dist/checksums.txt
-          retention-days: 90
       
-      - name: Build Summary
+      - name: Release Summary
         run: |
-          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag/Version**: ${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Chart Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Chart Package**: ${{ steps.package.outputs.chart_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Digest (SHA256)**: ${{ steps.checksum.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Release Type**: ${{ steps.release.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release Tag**: ${{ steps.release.outputs.release_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Is Tag**: ${{ steps.tag.outputs.is_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Is Main Branch**: ${{ steps.tag.outputs.is_main_branch }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **GitHub Release Created**: ${{ steps.release.outputs.should_release }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Packaged Charts" >> $GITHUB_STEP_SUMMARY
+          ls -lh dist/*.tgz >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Checksums" >> $GITHUB_STEP_SUMMARY
+          cat dist/checksums.txt >> $GITHUB_STEP_SUMMARY
 

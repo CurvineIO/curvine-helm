@@ -165,6 +165,11 @@ service:
     type: ClusterIP
     annotations: {}
   
+  worker:
+    # Headless service type (always ClusterIP: None)
+    type: ClusterIP
+    annotations: {}
+  
   # Optional: External service for master access
   masterExternal:
     enabled: false

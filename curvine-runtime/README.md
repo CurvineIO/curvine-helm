@@ -12,6 +12,150 @@ A production-ready Helm Chart for deploying Curvine distributed storage clusters
 - **Production-Ready**: Built-in resource limits, health checks, and RBAC
 - **Master Replica Protection**: Prevents accidental Master replica changes during upgrades
 
+## Architecture
+
+### Deployment Architecture
+
+```mermaid
+graph TB
+    Client[Client Applications]
+    Admin[Administrator]
+    
+    subgraph K8S[" "]
+        direction TB
+        
+        subgraph ConfigRes[" "]
+            direction LR
+            CM["ConfigMap<br/>curvine-config<br/>Contains: cluster config, master addrs, journal addrs"]
+            SA["ServiceAccount<br/>curvine<br/>For pod identity"]
+            RBAC["RBAC<br/>Role + RoleBinding<br/>Permissions: pods, configmaps, services, statefulsets"]
+        end
+        
+        subgraph MasterTier[" "]
+            direction TB
+            
+            MS["Master Service<br/>Type: ClusterIP None - Headless<br/>publishNotReadyAddresses: true<br/>━━━━━━━━━━━━━━━━━━━━<br/>Port 8995: RPC<br/>Port 8996: Journal/Raft<br/>Port 9000: Web UI<br/>Port 9001: Web1"]
+            
+            M0["master-0<br/>━━━━━━━━━━━━━━━━━━━━<br/>RPC: 8995<br/>Journal/Raft: 8996<br/>Web: 9000/9001<br/>━━━━━━━━━━━━━━━━━━━━<br/>Role: Metadata Mgmt<br/>Raft Node ID: 1"]
+            M1["master-1<br/>━━━━━━━━━━━━━━━━━━━━<br/>RPC: 8995<br/>Journal/Raft: 8996<br/>Web: 9000/9001<br/>━━━━━━━━━━━━━━━━━━━━<br/>Role: Metadata Mgmt<br/>Raft Node ID: 2"]
+            M2["master-2<br/>━━━━━━━━━━━━━━━━━━━━<br/>RPC: 8995<br/>Journal/Raft: 8996<br/>Web: 9000/9001<br/>━━━━━━━━━━━━━━━━━━━━<br/>Role: Metadata Mgmt<br/>Raft Node ID: 3"]
+            
+            PVC_M0["PVC: meta<br/>Size: 10Gi<br/>━━━━━━━━<br/>PVC: journal<br/>Size: 50Gi"]
+            PVC_M1["PVC: meta<br/>Size: 10Gi<br/>━━━━━━━━<br/>PVC: journal<br/>Size: 50Gi"]
+            PVC_M2["PVC: meta<br/>Size: 10Gi<br/>━━━━━━━━<br/>PVC: journal<br/>Size: 50Gi"]
+        end
+        
+        subgraph WorkerTier[" "]
+            direction TB
+            
+            WS["Worker Service<br/>Type: ClusterIP None - Headless<br/>publishNotReadyAddresses: true<br/>━━━━━━━━━━━━━━━━━━━━<br/>Port 8997: RPC<br/>Port 9001: Web UI"]
+            
+            W0["worker-0<br/>━━━━━━━━━━━━━━━━━━━━<br/>RPC: 8997<br/>Web: 9001<br/>━━━━━━━━━━━━━━━━━━━━<br/>Role: Data Storage<br/>Privileged: true<br/>Anti-Affinity: enabled"]
+            W1["worker-1<br/>━━━━━━━━━━━━━━━━━━━━<br/>RPC: 8997<br/>Web: 9001<br/>━━━━━━━━━━━━━━━━━━━━<br/>Role: Data Storage<br/>Privileged: true<br/>Anti-Affinity: enabled"]
+            W2["worker-2<br/>━━━━━━━━━━━━━━━━━━━━<br/>RPC: 8997<br/>Web: 9001<br/>━━━━━━━━━━━━━━━━━━━━<br/>Role: Data Storage<br/>Privileged: true<br/>Anti-Affinity: enabled"]
+            
+            PVC_W0["PVC: data1<br/>Type: SSD<br/>Size: 10Gi<br/>Mount: /data/data1"]
+            PVC_W1["PVC: data1<br/>Type: SSD<br/>Size: 10Gi<br/>Mount: /data/data1"]
+            PVC_W2["PVC: data1<br/>Type: SSD<br/>Size: 10Gi<br/>Mount: /data/data1"]
+        end
+    end
+    
+    MS -.DNS Resolution.-> M0
+    MS -.DNS Resolution.-> M1
+    MS -.DNS Resolution.-> M2
+    
+    WS -.DNS Resolution.-> W0
+    WS -.DNS Resolution.-> W1
+    WS -.DNS Resolution.-> W2
+    
+    M0 <-->|Raft Consensus<br/>Port 8996| M1
+    M1 <-->|Raft Consensus<br/>Port 8996| M2
+    M2 <-->|Raft Consensus<br/>Port 8996| M0
+    
+    M0 -->|Manage Workers<br/>RPC Port 8997| W0
+    M0 -->|Manage Workers<br/>RPC Port 8997| W1
+    M0 -->|Manage Workers<br/>RPC Port 8997| W2
+    M1 -.Backup Management.-> W0
+    M1 -.Backup Management.-> W1
+    M1 -.Backup Management.-> W2
+    
+    M0 -.Mount.-> PVC_M0
+    M1 -.Mount.-> PVC_M1
+    M2 -.Mount.-> PVC_M2
+    
+    W0 -.Mount.-> PVC_W0
+    W1 -.Mount.-> PVC_W1
+    W2 -.Mount.-> PVC_W2
+    
+    CM -.Config Mounted<br/>/app/curvine/conf/.-> M0
+    CM -.Config Mounted<br/>/app/curvine/conf/.-> M1
+    CM -.Config Mounted<br/>/app/curvine/conf/.-> M2
+    CM -.Config Mounted<br/>/app/curvine/conf/.-> W0
+    CM -.Config Mounted<br/>/app/curvine/conf/.-> W1
+    CM -.Config Mounted<br/>/app/curvine/conf/.-> W2
+    
+    SA -.Identity.-> M0
+    SA -.Identity.-> M1
+    SA -.Identity.-> M2
+    SA -.Identity.-> W0
+    SA -.Identity.-> W1
+    SA -.Identity.-> W2
+    
+    Client -->|Access Master<br/>RPC Port 8995| MS
+    Client -->|Access Worker<br/>RPC Port 8997| WS
+    Admin -->|Web UI<br/>Port 9000| MS
+    Admin -->|Worker Monitor<br/>Port 9001| WS
+    
+    style MS fill:#2196F3,stroke:#1976D2,stroke-width:3px,color:#fff
+    style WS fill:#2196F3,stroke:#1976D2,stroke-width:3px,color:#fff
+    style M0 fill:#4CAF50,stroke:#388E3C,stroke-width:2px,color:#fff
+    style M1 fill:#4CAF50,stroke:#388E3C,stroke-width:2px,color:#fff
+    style M2 fill:#4CAF50,stroke:#388E3C,stroke-width:2px,color:#fff
+    style W0 fill:#FF9800,stroke:#F57C00,stroke-width:2px,color:#fff
+    style W1 fill:#FF9800,stroke:#F57C00,stroke-width:2px,color:#fff
+    style W2 fill:#FF9800,stroke:#F57C00,stroke-width:2px,color:#fff
+    style Client fill:#9E9E9E,stroke:#616161,stroke-width:2px,color:#fff
+    style Admin fill:#9E9E9E,stroke:#616161,stroke-width:2px,color:#fff
+    style CM fill:#673AB7,stroke:#512DA8,stroke-width:2px,color:#fff
+    style SA fill:#673AB7,stroke:#512DA8,stroke-width:2px,color:#fff
+    style RBAC fill:#673AB7,stroke:#512DA8,stroke-width:2px,color:#fff
+    style PVC_M0 fill:#795548,stroke:#5D4037,stroke-width:2px,color:#fff
+    style PVC_M1 fill:#795548,stroke:#5D4037,stroke-width:2px,color:#fff
+    style PVC_M2 fill:#795548,stroke:#5D4037,stroke-width:2px,color:#fff
+    style PVC_W0 fill:#795548,stroke:#5D4037,stroke-width:2px,color:#fff
+    style PVC_W1 fill:#795548,stroke:#5D4037,stroke-width:2px,color:#fff
+    style PVC_W2 fill:#795548,stroke:#5D4037,stroke-width:2px,color:#fff
+```
+
+### Key Components
+
+#### Master Nodes
+- **Role**: Metadata management, cluster coordination, Raft consensus
+- **Service**: Headless Service for stable DNS names
+- **Ports**:
+  - `8995`: RPC for client/worker communication
+  - `8996`: Journal/Raft for consensus protocol
+  - `9000`: Web UI for cluster management
+  - `9001`: Additional web port
+- **Storage**: Persistent volumes for metadata and journal data
+- **HA**: Odd-numbered replicas (1, 3, 5...) for Raft quorum
+
+#### Worker Nodes
+- **Role**: Data storage and processing
+- **Service**: Headless Service for stable DNS names
+- **Ports**:
+  - `8997`: RPC for data operations
+  - `9001`: Web UI for worker monitoring
+- **Storage**: Persistent volumes for data storage (supports multiple data directories)
+- **Scaling**: Horizontal scaling without downtime
+- **Security**: Privileged mode for FUSE filesystem support
+
+#### Supporting Resources
+- **ConfigMap**: Centralized configuration for all nodes
+- **ServiceAccount**: Identity for pods to access Kubernetes API
+- **RBAC**: Role-based access control for service account permissions
+- **Anti-Affinity**: Spreads worker pods across nodes for high availability
+
 ## Prerequisites
 
 - Kubernetes 1.20+

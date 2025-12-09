@@ -143,6 +143,9 @@ worker:
     # requiredDuringSchedulingIgnoredDuringExecution or preferredDuringSchedulingIgnoredDuringExecution
     type: "preferred"
   
+  # Affinity (for custom node affinity, pod affinity rules)
+  affinity: {}
+  
   # Additional labels
   labels: {}
   

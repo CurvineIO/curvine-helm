@@ -80,6 +80,11 @@ spec:
             - name: web
               containerPort: {{ .Values.worker.webPort }}
               protocol: TCP
+            {{- if .Values.worker.s3Gateway.enabled }}
+            - name: s3
+              containerPort: {{ include "curvine.s3GatewayPort" . | int }}
+              protocol: TCP
+            {{- end }}
           livenessProbe:
             tcpSocket:
               port: {{ .Values.worker.rpcPort }}

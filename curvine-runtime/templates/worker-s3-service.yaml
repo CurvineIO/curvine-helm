@@ -1,0 +1,26 @@
+{{- if .Values.worker.s3Gateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "curvine.workerFullname" . }}-s3
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "curvine.workerLabels" . | nindent 4 }}
+  {{- with .Values.worker.s3Gateway.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ default "ClusterIP" .Values.worker.s3Gateway.service.type }}
+  ports:
+    - name: s3
+      port: {{ include "curvine.s3GatewayPort" . | int }}
+      targetPort: {{ include "curvine.s3GatewayPort" . | int }}
+      protocol: TCP
+      {{- if and (eq (default "ClusterIP" .Values.worker.s3Gateway.service.type) "NodePort") .Values.worker.s3Gateway.service.nodePort }}
+      nodePort: {{ .Values.worker.s3Gateway.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "curvine.workerSelectorLabels" . | nindent 4 }}
+{{- end }}
+

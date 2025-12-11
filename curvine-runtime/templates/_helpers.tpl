@@ -109,6 +109,13 @@ Worker service name (headless)
 {{- end }}
 
 {{/*
+Extract S3 gateway port from listen address
+*/}}
+{{- define "curvine.s3GatewayPort" -}}
+{{- regexFind "[0-9]+$" .Values.worker.s3Gateway.listen | default "9900" -}}
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "curvine.serviceAccountName" -}}

@@ -12,6 +12,7 @@ data:
     cluster_id = "{{ .Values.cluster.id }}"
     format_master = {{ .Values.cluster.formatMaster | default false }}
     format_worker = {{ .Values.cluster.formatWorker | default false }}
+    enable_s3_gateway = {{ .Values.worker.s3Gateway.enabled | default false }}
 
     {{- $metaDir := .Values.config.master.metaDir }}
     {{- $metaMount := .Values.master.storage.meta.mountPath }}
@@ -74,6 +75,10 @@ data:
     {{ $key }} = {{ toJson $value }}
     {{- end }}
     {{- end }}
+
+    [s3_gateway]
+    enable = {{ .Values.worker.s3Gateway.enabled | default false }}
+    listen = "{{ .Values.worker.s3Gateway.listen }}"
 
     [client]
     block_size_str = "{{ .Values.config.client.blockSizeStr }}"

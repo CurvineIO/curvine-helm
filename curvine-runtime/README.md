@@ -263,6 +263,9 @@ kubectl port-forward -n curvine svc/curvine-master 9000:9000
 | `worker.webPort` | Web UI port | `9001` |
 | `worker.hostNetwork` | Use host network | `false` |
 | `worker.privileged` | Privileged mode (required for FUSE) | `true` |
+| `worker.s3Gateway.enabled` | Enable S3 gateway on workers | `false` |
+| `worker.s3Gateway.listen` | Listen address for S3 gateway | `0.0.0.0:9900` |
+| `worker.s3Gateway.service.type` | Service type for S3 gateway (ClusterIP/LoadBalancer/NodePort) | `ClusterIP` |
 | `worker.antiAffinity.enabled` | Enable Pod anti-affinity | `true` |
 | `worker.antiAffinity.type` | Anti-affinity type | `preferred` |
 

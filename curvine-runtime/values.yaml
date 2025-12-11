@@ -92,6 +92,15 @@ worker:
   
   # Worker Web UI port
   webPort: 9001
+
+  # S3 Gateway
+  s3Gateway:
+    enabled: false
+    listen: "0.0.0.0:9900"
+    service:
+      type: ClusterIP        # ClusterIP | LoadBalancer | NodePort
+      annotations: {}
+      nodePort: null         # Only when type=NodePort
   
   # Use host network for workers
   hostNetwork: false

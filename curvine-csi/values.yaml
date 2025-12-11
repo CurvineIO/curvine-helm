@@ -87,6 +87,7 @@ node:
   name: curvine-csi-node
   priorityClassName: system-node-critical
   dnsPolicy: ClusterFirstWithHostNet
+  fuseDebugEnabled: false
 
   # Node container settings
   container:

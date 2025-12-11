@@ -43,6 +43,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            {{- if .Values.node.fuseDebugEnabled }}
+            - name: FUSE_DEBUG_ENABLED
+              value: "true"
+            {{- end }}
           lifecycle:
             preStop:
               exec:

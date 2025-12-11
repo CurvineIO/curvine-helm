@@ -48,6 +48,7 @@ The following table lists the configurable parameters and their default values:
 | `node.name` | Node DaemonSet name | `curvine-csi-node` |
 | `node.priorityClassName` | Priority class for node | `system-node-critical` |
 | `node.dnsPolicy` | DNS policy for node | `ClusterFirstWithHostNet` |
+| `node.fuseDebugEnabled` | Enable FUSE debug mode | `false` |
 | `rbac.create` | Create RBAC resources | `true` |
 | `serviceAccount.controller.name` | Controller service account name | `curvine-csi-controller-sa` |
 | `serviceAccount.node.name` | Node service account name | `curvine-csi-node-sa` |

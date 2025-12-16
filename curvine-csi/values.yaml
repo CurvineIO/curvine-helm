@@ -3,7 +3,7 @@
 
 # Global settings
 global:
-  namespace: curvine-system
+  namespace: curvine
 
 # Image settings
 image:

@@ -60,3 +60,31 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Create the name for controller service account
+*/}}
+{{- define "curvine-csi.controllerServiceAccountName" -}}
+{{- printf "%s-%s" (include "curvine-csi.fullname" .) "controller" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Create the name for node service account
+*/}}
+{{- define "curvine-csi.nodeServiceAccountName" -}}
+{{- printf "%s-%s" (include "curvine-csi.fullname" .) "node" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Create the name for controller cluster role
+*/}}
+{{- define "curvine-csi.controllerClusterRoleName" -}}
+{{- printf "%s-%s" (include "curvine-csi.fullname" .) "controller" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Create the name for node cluster role
+*/}}
+{{- define "curvine-csi.nodeClusterRoleName" -}}
+{{- printf "%s-%s" (include "curvine-csi.fullname" .) "node" | trunc 63 | trimSuffix "-" }}
+{{- end }}

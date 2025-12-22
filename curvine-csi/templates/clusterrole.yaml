@@ -2,7 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Values.serviceAccount.node.name }}
+  name: {{ include "curvine-csi.nodeClusterRoleName" . }}
   labels:
     {{- include "curvine-csi.labels" . | nindent 4 }}
     app.kubernetes.io/component: node
@@ -23,7 +23,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Values.serviceAccount.controller.name }}
+  name: {{ include "curvine-csi.controllerClusterRoleName" . }}
   labels:
     {{- include "curvine-csi.labels" . | nindent 4 }}
     app.kubernetes.io/component: controller

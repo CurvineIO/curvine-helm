@@ -16,7 +16,7 @@ spec:
         app: curvine-csi-node
         {{- include "curvine-csi.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ .Values.serviceAccount.node.name }}
+      serviceAccountName: {{ include "curvine-csi.nodeServiceAccountName" . }}
       {{- with .Values.node.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}

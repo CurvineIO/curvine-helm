@@ -18,7 +18,7 @@ spec:
         {{- include "curvine-csi.selectorLabels" . | nindent 8 }}
     spec:
       priorityClassName: {{ .Values.controller.priorityClassName }}
-      serviceAccountName: {{ .Values.serviceAccount.controller.name }}
+      serviceAccountName: {{ include "curvine-csi.controllerServiceAccountName" . }}
       {{- with .Values.controller.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}

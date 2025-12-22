@@ -2,32 +2,32 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ .Values.serviceAccount.node.name }}
+  name: {{ include "curvine-csi.nodeClusterRoleName" . }}
   labels:
     {{- include "curvine-csi.labels" . | nindent 4 }}
     app.kubernetes.io/component: node
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Values.serviceAccount.node.name }}
+  name: {{ include "curvine-csi.nodeClusterRoleName" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.serviceAccount.node.name }}
+    name: {{ include "curvine-csi.nodeServiceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ .Values.serviceAccount.controller.name }}
+  name: {{ include "curvine-csi.controllerClusterRoleName" . }}
   labels:
     {{- include "curvine-csi.labels" . | nindent 4 }}
     app.kubernetes.io/component: controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Values.serviceAccount.controller.name }}
+  name: {{ include "curvine-csi.controllerClusterRoleName" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.serviceAccount.controller.name }}
+    name: {{ include "curvine-csi.controllerServiceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end }}

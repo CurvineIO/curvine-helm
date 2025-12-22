@@ -19,14 +19,14 @@ helm repo update
 ### Install from Local Chart
 
 ```bash
-# Install with default values
+# Install with default values (uses default namespace or current context namespace)
 helm install curvine-csi ./curvine-csi
 
 # Install with custom values
 helm install curvine-csi ./curvine-csi -f custom-values.yaml
 
 # Install in specific namespace
-helm install curvine-csi ./curvine-csi --namespace curvine --create-namespace
+helm install curvine-csi ./curvine-csi --namespace curvine-system --create-namespace
 ```
 
 ## Configuration
@@ -35,7 +35,6 @@ The following table lists the configurable parameters and their default values:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `global.namespace` | Namespace to deploy resources | `curvine` |
 | `image.repository` | Curvine CSI image repository | `ghcr.io/curvineio/curvine-csi` |
 | `image.tag` | Curvine CSI image tag | `latest` |
 | `image.pullPolicy` | Image pull policy | `Always` |
@@ -52,6 +51,8 @@ The following table lists the configurable parameters and their default values:
 | `rbac.create` | Create RBAC resources | `true` |
 | `serviceAccount.controller.name` | Controller service account name | `curvine-csi-controller-sa` |
 | `serviceAccount.node.name` | Node service account name | `curvine-csi-node-sa` |
+
+**Note:** The chart uses `.Release.Namespace` internally, so resources will be deployed to the namespace specified by the `--namespace` flag during installation.
 
 ## Customization
 
@@ -171,11 +172,14 @@ spec:
 ## Uninstallation
 
 ```bash
-# Uninstall the release
-helm uninstall curvine-csi --namespace curvine
+# Uninstall the release (replace <namespace> with your installation namespace)
+helm uninstall curvine-csi --namespace <namespace>
+
+# Example: if installed in curvine-system namespace
+helm uninstall curvine-csi --namespace curvine-system
 
 # Optionally, delete the namespace
-kubectl delete namespace curvine
+kubectl delete namespace <namespace>
 ```
 
 ## Troubleshooting
@@ -186,28 +190,28 @@ kubectl delete namespace curvine
 # Check CSI driver registration
 kubectl get csidriver curvine
 
-# Check controller pod
-kubectl get deployment -n curvine curvine-csi-controller
-kubectl get pods -n curvine -l app=curvine-csi-controller
+# Check controller pod (replace <namespace> with your installation namespace)
+kubectl get deployment -n <namespace> curvine-csi-controller
+kubectl get pods -n <namespace> -l app=curvine-csi-controller
 
 # Check node pods
-kubectl get daemonset -n curvine curvine-csi-node
-kubectl get pods -n curvine -l app=curvine-csi-node
+kubectl get daemonset -n <namespace> curvine-csi-node
+kubectl get pods -n <namespace> -l app=curvine-csi-node
 ```
 
 ### Check Logs
 
 ```bash
-# Controller logs
-kubectl logs -n curvine -l app=curvine-csi-controller -c csi-plugin
+# Controller logs (replace <namespace> with your installation namespace)
+kubectl logs -n <namespace> -l app=curvine-csi-controller -c csi-plugin
 
 # Node logs
-kubectl logs -n curvine -l app=curvine-csi-node -c csi-plugin
+kubectl logs -n <namespace> -l app=curvine-csi-node -c csi-plugin
 
 # Check specific sidecar logs
-kubectl logs -n curvine -l app=curvine-csi-controller -c csi-provisioner
-kubectl logs -n curvine -l app=curvine-csi-controller -c csi-attacher
-kubectl logs -n curvine -l app=curvine-csi-node -c node-driver-registrar
+kubectl logs -n <namespace> -l app=curvine-csi-controller -c csi-provisioner
+kubectl logs -n <namespace> -l app=curvine-csi-controller -c csi-attacher
+kubectl logs -n <namespace> -l app=curvine-csi-node -c node-driver-registrar
 ```
 
 ### Common Issues
@@ -216,7 +220,7 @@ kubectl logs -n curvine -l app=curvine-csi-node -c node-driver-registrar
    - Check if the node-driver-registrar sidecar is running
    - Verify `/var/lib/kubelet/plugins_registry/` is accessible
    ```bash
-   kubectl logs -n curvine -l app=curvine-csi-node -c node-driver-registrar
+   kubectl logs -n <namespace> -l app=curvine-csi-node -c node-driver-registrar
    ```
 
 2. **Mount failures**
@@ -224,7 +228,7 @@ kubectl logs -n curvine -l app=curvine-csi-node -c node-driver-registrar
    - Ensure the fs-path exists and is accessible
    - Check FUSE mount status on the node
    ```bash
-   kubectl logs -n curvine -l app=curvine-csi-node -c csi-plugin
+   kubectl logs -n <namespace> -l app=curvine-csi-node -c csi-plugin
    ```
 
 3. **Permission issues**
@@ -240,7 +244,7 @@ kubectl logs -n curvine -l app=curvine-csi-node -c node-driver-registrar
    - Verify StorageClass parameters (master-addrs, fs-path)
    ```bash
    kubectl describe pvc <pvc-name>
-   kubectl logs -n curvine -l app=curvine-csi-controller -c csi-provisioner
+   kubectl logs -n <namespace> -l app=curvine-csi-controller -c csi-provisioner
    ```
 
 ## Support

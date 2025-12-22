@@ -169,29 +169,3 @@ serviceAccount:
 # RBAC settings
 rbac:
   create: true
-
-# ConfigMap settings
-configMap:
-  name: curvine-config
-  defaultMode: 0755
-  data:
-    curvineClusterToml: |
-      # Customer service configuration.
-      [client]
-      master_addrs = [
-          { hostname = "localhost", port = 8995 }
-      ]
-
-      # fuse configuration
-      [fuse]
-
-
-      # The log configuration of the customer service side, and the customer service side of rust, java, and fuse use this log file.
-      [log]
-      level = "info"
-      log_dir = "stdout"
-      file_name = "curvine.log"
-
-    curvineEnvSh: |
-      export CURVINE_HOME="$(cd "$(dirname "$0")"/..; pwd)"
-      export CURVINE_CONF_FILE=$CURVINE_HOME/conf/curvine-cluster.toml

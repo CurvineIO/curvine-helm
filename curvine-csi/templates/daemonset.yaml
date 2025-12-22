@@ -47,6 +47,17 @@ spec:
             - name: FUSE_DEBUG_ENABLED
               value: "true"
             {{- end }}
+            # Mount mode configuration
+            # - "standalone": FUSE runs in independent standalone pod (default, recommended)
+            # - "embedded": FUSE runs in CSI container (legacy mode)
+            - name: MOUNT_MODE
+              value: {{ .Values.node.mountMode | quote }}
+            # Standalone pod image (defaults to same CSI image)
+            - name: STANDALONE_IMAGE
+              value: {{ .Values.node.standaloneImage | quote }}
+            # Standalone pod ServiceAccount (required for standalone mode)
+            - name: STANDALONE_SERVICE_ACCOUNT
+              value: {{ include "curvine-csi.nodeServiceAccountName" . | quote }}
           lifecycle:
             preStop:
               exec:

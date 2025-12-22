@@ -3,7 +3,7 @@
 
 # Image settings
 image:
-  repository: ghcr.io/curvineio/curvine-csi
+  repository: 10.119.43.210:5000/curvine-csi
   tag: latest
   pullPolicy: Always
 
@@ -84,6 +84,15 @@ node:
   priorityClassName: system-node-critical
   dnsPolicy: ClusterFirstWithHostNet
   fuseDebugEnabled: false
+
+  # Mount mode configuration
+  # - "standalone": FUSE runs in independent standalone pod (default, recommended)
+  # - "embedded": FUSE runs in CSI container (legacy mode)
+  mountMode: standalone
+  
+  # Standalone pod image (used when mountMode=standalone)
+  # Defaults to same image as CSI if not specified
+  standaloneImage: 10.119.43.210:5000/curvine-csi:latest
 
   # Node container settings
   container:

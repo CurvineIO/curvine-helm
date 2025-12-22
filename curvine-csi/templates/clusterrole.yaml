@@ -7,6 +7,7 @@ metadata:
     {{- include "curvine-csi.labels" . | nindent 4 }}
     app.kubernetes.io/component: node
 rules:
+  # Secrets management
   - apiGroups:
       - ""
     resources:
@@ -19,6 +20,37 @@ rules:
       - update
       - patch
       - delete
+  # Pod management for standalone mode
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - watch
+  # ConfigMap for state persistence (standalone mode)
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - update
+      - watch
+  # Events for debugging
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

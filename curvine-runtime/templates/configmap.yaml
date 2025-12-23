@@ -70,6 +70,8 @@ data:
     rpc_port = {{ .Values.worker.rpcPort }}
     web_port = {{ .Values.worker.webPort }}
     data_dir = {{ include "curvine.workerDataDirs" . | trim }}
+    enable_s3_gateway = {{ .Values.worker.s3Gateway.enabled | default false }}
+    enable_distributed_auth = {{ .Values.worker.s3Gateway.enableDistributedAuth | default true }}
     {{- if .Values.configOverrides.worker }}
     {{- range $key, $value := .Values.configOverrides.worker }}
     {{ $key }} = {{ toJson $value }}
@@ -79,6 +81,12 @@ data:
     [s3_gateway]
     enable = {{ .Values.worker.s3Gateway.enabled | default false }}
     listen = "{{ .Values.worker.s3Gateway.listen }}"
+    {{- if .Values.worker.s3Gateway.enabled }}
+    # Use Curvine filesystem for multipart upload part files to enable distributed access
+    put_temp_dir = "/system/s3-temp"
+    {{- else }}
+    put_temp_dir = "/tmp/curvine-temp"
+    {{- end }}
 
     [client]
     block_size_str = "{{ .Values.config.client.blockSizeStr }}"

@@ -52,12 +52,21 @@ spec:
             # - "embedded": FUSE runs in CSI container (legacy mode)
             - name: MOUNT_MODE
               value: {{ .Values.node.mountMode | quote }}
-            # Standalone pod image (defaults to same CSI image)
+            {{- if eq .Values.node.mountMode "standalone" }}
+            # Standalone pod configuration
             - name: STANDALONE_IMAGE
-              value: {{ .Values.node.standaloneImage | quote }}
-            # Standalone pod ServiceAccount (required for standalone mode)
+              value: "{{ .Values.node.standalone.image | default .Values.image.repository }}:{{ .Values.image.tag }}"
             - name: STANDALONE_SERVICE_ACCOUNT
               value: {{ include "curvine-csi.nodeServiceAccountName" . | quote }}
+            - name: STANDALONE_CPU_REQUEST
+              value: {{ .Values.node.standalone.resources.requests.cpu | quote }}
+            - name: STANDALONE_CPU_LIMIT
+              value: {{ .Values.node.standalone.resources.limits.cpu | quote }}
+            - name: STANDALONE_MEMORY_REQUEST
+              value: {{ .Values.node.standalone.resources.requests.memory | quote }}
+            - name: STANDALONE_MEMORY_LIMIT
+              value: {{ .Values.node.standalone.resources.limits.memory | quote }}
+            {{- end }}
           lifecycle:
             preStop:
               exec:

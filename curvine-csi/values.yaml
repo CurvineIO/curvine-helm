@@ -3,7 +3,7 @@
 
 # Image settings
 image:
-  repository: 10.119.43.210:5000/curvine-csi
+  repository: ghcr.io/curvineio/curvine-csi
   tag: latest
   pullPolicy: Always
 
@@ -92,7 +92,7 @@ node:
   
   # Standalone pod image (used when mountMode=standalone)
   # Defaults to same image as CSI if not specified
-  standaloneImage: 10.119.43.210:5000/curvine-csi:latest
+  standaloneImage: ghcr.io/curvineio/curvine-csi:latest
 
   # Node container settings
   container:

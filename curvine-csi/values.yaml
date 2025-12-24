@@ -90,9 +90,19 @@ node:
   # - "embedded": FUSE runs in CSI container (legacy mode)
   mountMode: standalone
   
-  # Standalone pod image (used when mountMode=standalone)
-  # Defaults to same image as CSI if not specified
-  standaloneImage: ghcr.io/curvineio/curvine-csi:latest
+  # Standalone pod configuration
+  standalone:
+    # Image for standalone pod (defaults to main CSI image if not set)
+    image: ""
+    
+    # Resource limits for standalone pod
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "2"
+        memory: "2Gi"
 
   # Node container settings
   container:

@@ -2,7 +2,7 @@ apiVersion: v2
 name: curvine-csi
 description: A Helm chart for Curvine CSI Driver
 type: application
-version: 0.0.0-latest
+version: 0.2.0
 appVersion: "latest"
 keywords:
   - storage

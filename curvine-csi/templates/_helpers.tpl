@@ -65,14 +65,14 @@ Create the name of the service account to use
 Create the name for controller service account
 */}}
 {{- define "curvine-csi.controllerServiceAccountName" -}}
-{{- printf "%s-%s" (include "curvine-csi.fullname" .) "controller" | trunc 63 | trimSuffix "-" }}
+{{- default (printf "%s-%s" (include "curvine-csi.fullname" .) "controller") .Values.serviceAccount.controller.name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create the name for node service account
 */}}
 {{- define "curvine-csi.nodeServiceAccountName" -}}
-{{- printf "%s-%s" (include "curvine-csi.fullname" .) "node" | trunc 63 | trimSuffix "-" }}
+{{- default (printf "%s-%s" (include "curvine-csi.fullname" .) "node") .Values.serviceAccount.node.name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*

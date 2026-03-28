@@ -1,65 +1,27 @@
-🎉 Curvine cluster has been deployed successfully!
+Curvine runtime has been installed.
 
-Cluster Information:
---------------------
-  Cluster ID:      {{ .Values.cluster.id }}
-  Namespace:       {{ .Release.Namespace }}
-  Master Replicas: {{ .Values.master.replicas }}
-  Worker Replicas: {{ .Values.worker.replicas }}
+Release:
+  Name: {{ .Release.Name }}
+  Namespace: {{ .Release.Namespace }}
+  Cluster ID: {{ .Values.cluster.id }}
 
-Master Nodes:
--------------
-{{- range $i := until (int .Values.master.replicas) }}
-  - {{ include "curvine.masterFullname" $ }}-{{ $i }}.{{ include "curvine.masterServiceName" $ }}.{{ $.Release.Namespace }}.svc.{{ $.Values.global.clusterDomain }}
-{{- end }}
+Verify the release:
+  helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+  kubectl get statefulset,pod,pvc -n {{ .Release.Namespace }}
+  kubectl get events -n {{ .Release.Namespace }} --sort-by='.lastTimestamp'
 
-Service Endpoints:
-------------------
-  Master RPC:   {{ include "curvine.masterServiceName" . }}:{{ .Values.master.rpcPort }}
-  Master Web:   {{ include "curvine.masterServiceName" . }}:{{ .Values.master.webPort }}
-  Worker RPC:   {{ include "curvine.workerFullname" . }}:{{ .Values.worker.rpcPort }}
+If a Pod is Pending:
+  kubectl describe pod <pod-name> -n {{ .Release.Namespace }}
+  kubectl describe pvc <pvc-name> -n {{ .Release.Namespace }}
+  kubectl get storageclass
+  kubectl get nodes --show-labels
 
-Quick Commands:
----------------
-1. Check cluster status:
-   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+Access the master web UI:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "curvine.masterServiceName" . }} {{ .Values.master.webPort }}:{{ .Values.master.webPort }}
 
-2. View master logs:
-   kubectl logs -n {{ .Release.Namespace }} {{ include "curvine.masterFullname" . }}-0 -f
+Upgrade in place:
+  helm upgrade --install {{ .Release.Name }} <chart-ref> -n {{ .Release.Namespace }} -f values.yaml
 
-3. View worker logs:
-   kubectl logs -n {{ .Release.Namespace }} {{ include "curvine.workerFullname" . }}-0 -f
-
-4. Access master web UI (port-forward):
-   kubectl port-forward -n {{ .Release.Namespace }} {{ include "curvine.masterFullname" . }}-0 {{ .Values.master.webPort }}:{{ .Values.master.webPort }}
-   Then visit: http://localhost:{{ .Values.master.webPort }}
-
-5. Execute commands in master pod:
-   kubectl exec -it -n {{ .Release.Namespace }} {{ include "curvine.masterFullname" . }}-0 -- bash
-
-Management:
------------
-  Upgrade:  helm upgrade {{ .Release.Name }} curvine -n {{ .Release.Namespace }}
-  Rollback: helm rollback {{ .Release.Name }} -n {{ .Release.Namespace }}
-  Status:   helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
-  History:  helm history {{ .Release.Name }} -n {{ .Release.Namespace }}
-
-Configuration:
---------------
-  ConfigMap: {{ include "curvine.fullname" . }}-config
-
-  View current config:
-  kubectl get configmap -n {{ .Release.Namespace }} {{ include "curvine.fullname" . }}-config -o yaml
-
-{{- if .Values.master.storage.meta.storageClass }}
-
-Persistent Storage:
--------------------
-  Master meta storage:    {{ .Values.master.storage.meta.storageClass }} ({{ .Values.master.storage.meta.size }})
-  Master journal storage: {{ .Values.master.storage.journal.storageClass }} ({{ .Values.master.storage.journal.size }})
-
-  View PVCs:
-  kubectl get pvc -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
-{{- end }}
-
-For more information, visit: https://github.com/CurvineIO/curvine.git
+Important:
+  - Reuse the same release name and namespace when re-deploying with existing PVCs
+  - Do not change master.replicas during an in-place upgrade

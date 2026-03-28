@@ -1,102 +1,73 @@
-# Curvine CSI Driver Helm Chart
+# Curvine CSI Helm Chart
 
-This Helm chart deploys the Curvine CSI (Container Storage Interface) driver on a Kubernetes cluster.
+Helm chart for deploying the Curvine CSI driver.
+
+## Naming
+
+- Source directory: `curvine-csi/`
+- Published chart name: `curvine-csi`
+- Recommended release name: `curvine-csi`
+- Recommended namespace: `curvine-system`
 
 ## Prerequisites
 
 - Kubernetes 1.19+
-- Helm 3.0+
+- Helm 3.x
+- A reachable Curvine runtime cluster
+- Privileged node Pods and required kubelet host paths must be allowed
 
-## Installation
+The chart includes `values.schema.json` so invalid values can be rejected before rendering.
 
-### Add Helm Repository (if available)
+## Install
+
+### From The Public Helm Repository
 
 ```bash
-helm repo add curvine https://curvineio.github.io/helm-charts
+helm repo add curvineio https://curvineio.github.io/curvine-doc/helm-charts
 helm repo update
+
+helm upgrade --install curvine-csi curvineio/curvine-csi \
+  --namespace curvine-system \
+  --create-namespace
 ```
 
-### Install from Local Chart
+### From Local Source
 
 ```bash
-# Install with default values (uses default namespace or current context namespace)
-helm install curvine-csi ./curvine-csi
-
-# Install with custom values
-helm install curvine-csi ./curvine-csi -f custom-values.yaml
-
-# Install in specific namespace
-helm install curvine-csi ./curvine-csi --namespace curvine-system --create-namespace
+helm upgrade --install curvine-csi ./curvine-csi \
+  --namespace curvine-system \
+  --create-namespace
 ```
 
-## Configuration
+## Configuration Notes
 
-The following table lists the configurable parameters and their default values:
+- Service account names are derived from the release name by default.
+- You can override them with:
+  - `serviceAccount.controller.name`
+  - `serviceAccount.node.name`
+- Standalone mount mode is enabled by default through `node.mountMode=standalone`.
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `image.repository` | Curvine CSI image repository | `ghcr.io/curvineio/curvine-csi` |
-| `image.tag` | Curvine CSI image tag | `latest` |
-| `image.pullPolicy` | Image pull policy | `Always` |
+## Core Values
+
+| Key | Description | Default |
+| --- | --- | --- |
+| `image.repository` | CSI image repository | `ghcr.io/curvineio/curvine-csi` |
+| `image.tag` | CSI image tag | `latest` |
 | `csiDriver.name` | CSI driver name | `curvine` |
-| `csiDriver.attachRequired` | Whether attach is required | `false` |
-| `csiDriver.podInfoOnMount` | Whether pod info on mount | `false` |
-| `controller.name` | Controller deployment name | `curvine-csi-controller` |
-| `controller.replicas` | Number of controller replicas | `1` |
-| `controller.priorityClassName` | Priority class for controller | `system-cluster-critical` |
-| `node.name` | Node DaemonSet name | `curvine-csi-node` |
-| `node.priorityClassName` | Priority class for node | `system-node-critical` |
-| `node.dnsPolicy` | DNS policy for node | `ClusterFirstWithHostNet` |
-| `node.fuseDebugEnabled` | Enable FUSE debug mode | `false` |
-| `rbac.create` | Create RBAC resources | `true` |
-| `serviceAccount.controller.name` | Controller service account name | `curvine-csi-controller-sa` |
-| `serviceAccount.node.name` | Node service account name | `curvine-csi-node-sa` |
+| `controller.replicas` | Controller replica count | `1` |
+| `node.mountMode` | FUSE mount strategy | `standalone` |
+| `node.priorityClassName` | Node DaemonSet priority class | `system-node-critical` |
+| `rbac.create` | Create service accounts, cluster roles, and bindings | `true` |
 
-**Note:** The chart uses `.Release.Namespace` internally, so resources will be deployed to the namespace specified by the `--namespace` flag during installation.
+For the full values surface, inspect:
 
-## Customization
-
-### Custom Images
-
-```yaml
-image:
-  repository: ghcr.io/your-org/curvine-csi
-  tag: v0.1.0
-  pullPolicy: IfNotPresent
-
-controller:
-  sidecars:
-    provisioner:
-      image: quay.io/k8scsi/csi-provisioner:v1.6.0
-    attacher:
-      image: registry.k8s.io/sig-storage/csi-attacher:v4.5.0
-    livenessProbe:
-      image: registry.k8s.io/sig-storage/livenessprobe:v2.11.0
-
-node:
-  sidecars:
-    nodeDriverRegistrar:
-      image: quay.io/k8scsi/csi-node-driver-registrar:v2.1.0
-    livenessProbe:
-      image: registry.k8s.io/sig-storage/livenessprobe:v2.11.0
+```bash
+helm show values curvineio/curvine-csi
 ```
 
-### Node Tolerations
+## StorageClass Example
 
-```yaml
-node:
-  tolerations:
-    - key: "node-role.kubernetes.io/master"
-      operator: "Exists"
-      effect: "NoSchedule"
-    - key: "node-role.kubernetes.io/control-plane"
-      operator: "Exists"
-      effect: "NoSchedule"
-```
-
-## Usage
-
-After installation, create a StorageClass with Curvine cluster configuration:
+Create a StorageClass after the runtime cluster is available.
 
 ```yaml
 apiVersion: storage.k8s.io/v1
@@ -108,32 +79,14 @@ reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
 parameters:
-  # Required: Curvine cluster connection information
-  master-addrs: "master1:8995,master2:8995,master3:8995"
-  
-  # Required: Filesystem path prefix for dynamic PV
-  # Each dynamic PV will create: fs-path + pv-name
+  master-addrs: "curvine-master-0.curvine-master.curvine.svc.cluster.local:8995"
   fs-path: "/data"
-  
-  # Optional: Path creation strategy
-  path-type: "DirectoryOrCreate"  # "DirectoryOrCreate" or "Directory"
-  
-  # Optional: FUSE parameters
-  # io-threads: "4"
-  # worker-threads: "8"
+  path-type: "DirectoryOrCreate"
 ```
 
-### StorageClass Parameters
+If your runtime cluster has multiple masters, add them as a comma-separated list in `master-addrs`.
 
-| Parameter | Required | Description | Default |
-|-----------|----------|-------------|---------|
-| `master-addrs` | Yes | Curvine master node addresses, format: `host:port,host:port` | - |
-| `fs-path` | Yes | Filesystem path prefix for PV. Each PV creates `fs-path + pv-name` | - |
-| `path-type` | No | Path creation strategy: `DirectoryOrCreate` or `Directory` | `Directory` |
-| `io-threads` | No | FUSE IO threads count | - |
-| `worker-threads` | No | FUSE worker threads count | - |
-
-### Create a PersistentVolumeClaim
+## PVC Example
 
 ```yaml
 apiVersion: v1
@@ -149,106 +102,40 @@ spec:
   storageClassName: curvine-sc
 ```
 
-### Use PVC in a Pod
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: test-pod
-spec:
-  containers:
-    - name: app
-      image: nginx
-      volumeMounts:
-        - mountPath: /data
-          name: curvine-volume
-  volumes:
-    - name: curvine-volume
-      persistentVolumeClaim:
-        claimName: test-pvc
-```
-
-## Uninstallation
+## Verify
 
 ```bash
-# Uninstall the release (replace <namespace> with your installation namespace)
-helm uninstall curvine-csi --namespace <namespace>
-
-# Example: if installed in curvine-system namespace
-helm uninstall curvine-csi --namespace curvine-system
-
-# Optionally, delete the namespace
-kubectl delete namespace <namespace>
-```
-
-## Troubleshooting
-
-### Check CSI Driver Status
-
-```bash
-# Check CSI driver registration
 kubectl get csidriver curvine
-
-# Check controller pod (replace <namespace> with your installation namespace)
-kubectl get deployment -n <namespace> curvine-csi-controller
-kubectl get pods -n <namespace> -l app=curvine-csi-controller
-
-# Check node pods
-kubectl get daemonset -n <namespace> curvine-csi-node
-kubectl get pods -n <namespace> -l app=curvine-csi-node
+kubectl get deployment -n curvine-system -l app.kubernetes.io/instance=curvine-csi,app.kubernetes.io/component=controller
+kubectl get daemonset -n curvine-system -l app.kubernetes.io/instance=curvine-csi,app.kubernetes.io/component=node
+kubectl get pods -n curvine-system -l app.kubernetes.io/instance=curvine-csi
 ```
 
-### Check Logs
+To inspect RBAC and service accounts created by the chart:
 
 ```bash
-# Controller logs (replace <namespace> with your installation namespace)
-kubectl logs -n <namespace> -l app=curvine-csi-controller -c csi-plugin
-
-# Node logs
-kubectl logs -n <namespace> -l app=curvine-csi-node -c csi-plugin
-
-# Check specific sidecar logs
-kubectl logs -n <namespace> -l app=curvine-csi-controller -c csi-provisioner
-kubectl logs -n <namespace> -l app=curvine-csi-controller -c csi-attacher
-kubectl logs -n <namespace> -l app=curvine-csi-node -c node-driver-registrar
+kubectl get sa -n curvine-system -l app.kubernetes.io/instance=curvine-csi
+kubectl get clusterrole,clusterrolebinding -l app.kubernetes.io/instance=curvine-csi
 ```
 
-### Common Issues
+## Logs
 
-1. **CSI Driver not registered**
-   - Check if the node-driver-registrar sidecar is running
-   - Verify `/var/lib/kubelet/plugins_registry/` is accessible
-   ```bash
-   kubectl logs -n <namespace> -l app=curvine-csi-node -c node-driver-registrar
-   ```
+```bash
+kubectl logs -n curvine-system -l app=curvine-csi-controller -c csi-plugin
+kubectl logs -n curvine-system -l app=curvine-csi-controller -c csi-provisioner
+kubectl logs -n curvine-system -l app=curvine-csi-node -c csi-plugin
+kubectl logs -n curvine-system -l app=curvine-csi-node -c node-driver-registrar
+```
 
-2. **Mount failures**
-   - Verify Curvine cluster connectivity by checking master-addrs in StorageClass
-   - Ensure the fs-path exists and is accessible
-   - Check FUSE mount status on the node
-   ```bash
-   kubectl logs -n <namespace> -l app=curvine-csi-node -c csi-plugin
-   ```
+## Uninstall
 
-3. **Permission issues**
-   - Ensure proper RBAC permissions are granted
-   - Verify ServiceAccounts are created correctly
-   ```bash
-   kubectl get clusterrole curvine-csi-controller-sa
-   kubectl get clusterrole curvine-csi-node-sa
-   ```
+```bash
+helm uninstall curvine-csi --namespace curvine-system
+```
 
-4. **Volume provisioning stuck**
-   - Check controller pod status and logs
-   - Verify StorageClass parameters (master-addrs, fs-path)
-   ```bash
-   kubectl describe pvc <pvc-name>
-   kubectl logs -n <namespace> -l app=curvine-csi-controller -c csi-provisioner
-   ```
+Delete the namespace only if no other resources still depend on it.
 
 ## Support
 
-For support and documentation, visit:
-- [Curvine Documentation](https://curvineio.github.io/docs/)
-- [GitHub Issues](https://github.com/CurvineIO/curvine/issues)
+- Curvine project: https://github.com/CurvineIO/curvine
+- Helm repo index: https://curvineio.github.io/curvine-doc/helm-charts/index.yaml

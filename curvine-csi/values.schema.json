@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "csiDriver": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attachRequired": {
+          "type": "boolean"
+        },
+        "podInfoOnMount": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "controller": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "priorityClassName": {
+          "type": "string"
+        },
+        "container": {
+          "type": "object"
+        },
+        "sidecars": {
+          "type": "object"
+        },
+        "tolerations": {
+          "type": "array"
+        }
+      },
+      "additionalProperties": true
+    },
+    "node": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "priorityClassName": {
+          "type": "string"
+        },
+        "dnsPolicy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fuseDebugEnabled": {
+          "type": "boolean"
+        },
+        "mountMode": {
+          "type": "string",
+          "enum": [
+            "standalone",
+            "embedded"
+          ]
+        },
+        "standalone": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string"
+            },
+            "resources": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": true
+        },
+        "container": {
+          "type": "object"
+        },
+        "sidecars": {
+          "type": "object"
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "hostPaths": {
+          "type": "object",
+          "properties": {
+            "pluginDir": {
+              "$ref": "#/definitions/hostPath"
+            },
+            "kubeletDir": {
+              "$ref": "#/definitions/hostPath"
+            },
+            "registrationDir": {
+              "$ref": "#/definitions/hostPath"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "controller": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "node": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "rbac": {
+      "type": "object",
+      "properties": {
+        "create": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "hostPath": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Directory",
+            "DirectoryOrCreate",
+            "File",
+            "FileOrCreate",
+            "Socket",
+            "CharDevice",
+            "BlockDevice"
+          ]
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

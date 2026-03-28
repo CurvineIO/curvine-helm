@@ -1,193 +1,93 @@
 # Curvine Helm Charts
 
-Official Helm charts for Curvine projects.
+Source repository for the Curvine Helm charts.
 
-## Available Charts
+## Published Helm Repository
 
-- **curvine-csi**: CSI Driver for Curvine storage
-- **curvine-runtime**: Curvine distributed multi-level cache system
-
-## Quick Start
-
-Add the Helm repository:
+Public index:
 
 ```bash
 helm repo add curvineio https://curvineio.github.io/curvine-doc/helm-charts
 helm repo update
 ```
 
-Search available charts:
+Published charts:
+
+| Source Directory | Published Chart Name | Purpose |
+| --- | --- | --- |
+| `curvine-runtime/` | `curvine` | Curvine runtime cluster |
+| `curvine-csi/` | `curvine-csi` | Curvine CSI driver |
+
+## Quick Start
+
+Install a minimal runtime cluster:
 
 ```bash
-helm search repo curvineio
+helm upgrade --install curvine curvineio/curvine \
+  -n curvine \
+  --create-namespace
 ```
 
-Install charts:
+Install the CSI driver:
 
 ```bash
-# Install Curvine Runtime
-helm install curvine curvineio/curvine-runtime
-
-# Install Curvine CSI Driver
-helm install curvine-csi curvineio/curvine-csi
+helm upgrade --install curvine-csi curvineio/curvine-csi \
+  -n curvine-system \
+  --create-namespace
 ```
 
-## Architecture
+Install the CSI chart only after the Curvine runtime cluster is reachable and you are ready to create a `StorageClass`.
 
-This repository uses a clean, efficient architecture:
+Before you install the runtime chart, make sure one of these is true:
 
-```
-┌──────────────────────────────────────────────┐
-│ curvine-helm Repository (main branch)        │
-│ - Source code only                           │
-│ - curvine-csi/ (chart source)               │
-│ - curvine-runtime/ (chart source)           │
-└───────────────┬──────────────────────────────┘
-                │
-                ▼
-┌──────────────────────────────────────────────┐
-│ GitHub Actions Build & Release               │
-│ - Builds charts from source                  │
-│ - Creates GitHub Releases                    │
-│ - Uploads .tgz packages to Releases          │
-└───────────────┬──────────────────────────────┘
-                │
-                ├────────────┬──────────────────┐
-                ▼            ▼                  ▼
-    ┌───────────────────┐   ┌────────────┐   ┌────────────┐
-    │ GitHub Releases   │   │ curvine-doc│   │ Users      │
-    │ Store .tgz files  │   │ index.yaml │   │ Download   │
-    └───────────────────┘   └────────────┘   └────────────┘
-```
+- Your cluster has a default `StorageClass`
+- You pass explicit `storageClass` values
+- You use a `hostPath`-based example on bare metal
 
-### Key Points
+## Documentation
 
-1. **Chart Packages (.tgz)**: Stored in GitHub Releases
-   - URL: `https://github.com/CurvineIO/curvine-helm/releases/download/{tag}/`
-   - Each release (v0.1.0, v0.2.0, latest, etc.) contains chart packages
-   
-2. **Index File (index.yaml)**: Stored in curvine-doc repository
-   - URL: `https://curvineio.github.io/curvine-doc/helm-charts/index.yaml`
-   - Contains metadata for all chart versions
-   - URLs point to GitHub Releases for downloads
+- Runtime chart: [curvine-runtime/README.md](./curvine-runtime/README.md)
+- CSI chart: [curvine-csi/README.md](./curvine-csi/README.md)
+- Release workflow: [.github/workflows/README.md](./.github/workflows/README.md)
 
-3. **main Branch**: Clean source code only
-   - No build artifacts
-   - No gh-pages branch needed
+## Repository Layout
 
-## Development
-
-### Building Charts Locally
-
-```bash
-# Lint a chart
-cd curvine-csi
-helm lint .
-
-# Package a chart
-helm package curvine-csi
-```
-
-### Automated Releases
-
-Charts are automatically built and published via GitHub Actions:
-
-#### 1. Testing (main branch)
-
-```bash
-git push origin main
-```
-
-**Result**:
-- Builds fixed version `0.0.0-dev` (or similar)
-- Updates GitHub Release "latest" (overwrites previous)
-- Does NOT sync to curvine-doc by default
-- Perfect for testing without polluting version history
-
-#### 2. Release (version tag)
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-**Result**:
-- Builds version `0.1.0`
-- Creates new GitHub Release `v0.1.0`
-- Does NOT sync to curvine-doc automatically
-
-**To publish to curvine-doc**:
-- Use manual workflow trigger
-- Select the tag
-- Check "Sync to curvine-doc"
-
-#### 3. Manual Trigger
-
-Go to GitHub Actions → "Build and Release Helm Chart" → "Run workflow"
-
-Options:
-- **ref**: Branch or tag to build (e.g., `main`, `v0.1.0`)
-- **Sync to curvine-doc**: Check this to update the public index
-
-**Use cases**:
-- Test a specific branch without syncing
-- Update production index after releasing a tag
-- Re-sync index if needed
-
-## Version Strategy
-
-| Trigger | Version Format | Example | Overwrites? | Syncs to curvine-doc? |
-|---------|----------------|---------|-------------|-----------------------|
-| main branch | `{base}-dev` | `0.0.0-dev` | Yes | No (manual only) |
-| v* tag | `{tag without v}` | `0.1.0` | No | Manual only |
-| Manual | Depends on ref | Varies | Depends | Optional (checkbox) |
-
-## Chart Documentation
-
-- [Curvine CSI Documentation](./curvine-csi/README.md)
-- [Curvine Runtime Documentation](./curvine-runtime/README.md)
-
-## Repository Structure
-
-```
+```text
 curvine-helm/
-├── .github/workflows/    # Automated CI/CD
-│   └── release.yml
-├── curvine-csi/          # CSI Driver chart source
-│   ├── Chart.yaml
-│   ├── values.yaml
-│   └── templates/
-├── curvine-runtime/      # Runtime chart source
-│   ├── Chart.yaml
-│   ├── values.yaml
-│   └── templates/
-└── README.md             # This file
+├── .github/workflows/        # Chart packaging and release workflow
+├── curvine-runtime/          # Source for the published `curvine` chart
+├── curvine-csi/              # Source for the published `curvine-csi` chart
+└── README.md                 # Repository entrypoint
 ```
 
-**Note**: No `charts/` directory or `gh-pages` branch. All build artifacts are in GitHub Releases.
+## Release Architecture
 
-## How It Works
+- This repository stores chart source code only.
+- Chart packages are published to GitHub Releases.
+- The public Helm index is served from `curvine-doc`.
+- End users should install from `https://curvineio.github.io/curvine-doc/helm-charts`.
 
-1. **Developer pushes code** (tag or main branch)
-2. **GitHub Actions builds** charts and creates Release
-3. **Manual trigger** (when ready to publish):
-   - Downloads current release's .tgz files
-   - Downloads existing index.yaml from curvine-doc
-   - Generates new index with `--merge` (updates same versions, adds new ones)
-   - URLs in index point to GitHub Releases
-   - Pushes updated index.yaml to curvine-doc
-4. **Users install** from curvine-doc (index) + GitHub Releases (packages)
+## Local Development
 
-## Contributing
+Lint and package from source directories:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+```bash
+helm lint ./curvine-runtime
+helm lint ./curvine-csi
 
-## License
+mkdir -p dist
+helm package ./curvine-runtime --destination dist
+helm package ./curvine-csi --destination dist
+```
 
-See [LICENSE](./LICENSE) file for details.
+Install locally from source:
+
+```bash
+helm upgrade --install curvine ./curvine-runtime -n curvine --create-namespace
+helm upgrade --install curvine-csi ./curvine-csi -n curvine-system --create-namespace
+```
 
 ## Links
 
-- [Curvine Project](https://github.com/CurvineIO/curvine)
-- [Helm Documentation](https://helm.sh/docs/)
-- [Chart Repository Guide](https://helm.sh/docs/topics/chart_repository/)
+- Curvine project: https://github.com/CurvineIO/curvine
+- Helm documentation: https://helm.sh/docs/

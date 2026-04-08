@@ -127,6 +127,7 @@ node:
     # Ports
     ports:
       healthz: 9909
+      metrics: 9002
 
     # Security context
     securityContext:
@@ -140,6 +141,15 @@ node:
             - /bin/sh
             - -c
             - rm /csi/csi.sock
+
+    # Resource limits for embedded mode (when mountMode is "embedded")
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "2"
+        memory: "2Gi"
 
   # Sidecar containers
   sidecars:

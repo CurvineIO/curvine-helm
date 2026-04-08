@@ -86,8 +86,13 @@ spec:
             - containerPort: {{ .Values.node.container.ports.healthz }}
               name: healthz
               protocol: TCP
+            - containerPort: {{ .Values.node.container.ports.metrics }}
+              name: metrics
+              protocol: TCP
           securityContext:
             {{- toYaml .Values.node.container.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.node.container.resources | nindent 12 }}
           volumeMounts:
             - mountPath: /csi
               name: plugin-dir

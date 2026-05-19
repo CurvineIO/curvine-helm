@@ -348,8 +348,8 @@ jobs:
 
   sync-to-helm-repo:
     needs: create-release
-    # Only sync when manually triggered with sync_to_doc=true
-    if: always() && needs.create-release.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.sync_to_doc == true
+    # Auto-sync on v* tag push; manual workflow_dispatch via sync_to_doc
+    if: always() && needs.create-release.result == 'success' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.sync_to_doc == true))
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -12,7 +12,7 @@ cluster:
 # Image configuration
 image:
   repository: ghcr.io/curvineio/curvine
-  tag: "latest"
+  tag: "v0.2.0-alpha"
   pullPolicy: IfNotPresent
   pullSecrets: []
 
@@ -213,6 +213,8 @@ config:
   journal:
     enable: true
     journalDir: "/opt/curvine/data/journal"
+    snapshotInterval: "30s"
+    snapshotEntries: 100
   
   # Worker configuration
   worker:

@@ -1,10 +1,20 @@
-apiVersion: apps/v1
+apiVersion: {{ ternary "apps.kruise.io/v1beta1" "apps/v1" .Values.openKruise.enabled }}
 kind: StatefulSet
 metadata:
   name: {{ include "curvine.workerFullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "curvine.workerLabels" . | nindent 4 }}
+  {{- if and .Values.openKruise.enabled .Values.openKruise.persistentPodState.autoGenerate }}
+  annotations:
+    kruise.io/auto-generate-persistent-pod-state: "true"
+    {{- if .Values.openKruise.persistentPodState.preferredPersistentTopology }}
+    kruise.io/preferred-persistent-topology: {{ .Values.openKruise.persistentPodState.preferredPersistentTopology | quote }}
+    {{- end }}
+    {{- if .Values.openKruise.persistentPodState.requiredPersistentTopology }}
+    kruise.io/required-persistent-topology: {{ .Values.openKruise.persistentPodState.requiredPersistentTopology | quote }}
+    {{- end }}
+  {{- end }}
 spec:
   serviceName: {{ include "curvine.workerFullname" . }}
   replicas: {{ .Values.worker.replicas }}
@@ -14,6 +24,10 @@ spec:
   podManagementPolicy: Parallel
   updateStrategy:
     type: RollingUpdate
+    {{- if .Values.openKruise.enabled }}
+    rollingUpdate:
+      podUpdatePolicy: {{ .Values.openKruise.podUpdatePolicy }}
+    {{- end }}
   template:
     metadata:
       labels:
@@ -30,6 +44,10 @@ spec:
     spec:
       serviceAccountName: {{ include "curvine.serviceAccountName" . }}
       {{- include "curvine.imagePullSecrets" . | nindent 6 }}
+      {{- if .Values.openKruise.enabled }}
+      readinessGates:
+        - conditionType: InPlaceUpdateReady
+      {{- end }}
       {{- if .Values.worker.hostNetwork }}
       hostNetwork: true
       dnsPolicy: {{ .Values.worker.dnsPolicy }}
@@ -69,7 +87,11 @@ spec:
             - name: CURVINE_MASTER_HOSTNAME
               value: "{{ include "curvine.masterFullname" . }}-0.{{ include "curvine.masterServiceName" . }}.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }}"
             - name: CURVINE_WORKER_HOSTNAME
+              {{- if .Values.worker.usePodIPAsHostname }}
+              value: "$(POD_IP)"
+              {{- else }}
               value: "$(POD_NAME).{{ include "curvine.workerFullname" . }}.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }}"
+              {{- end }}
             {{- with .Values.worker.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

@@ -161,6 +161,15 @@ graph TB
 - Kubernetes 1.20+
 - Helm 3.0+
 - PV provisioner (if using PVC storage)
+- OpenKruise (required when enabling Advanced StatefulSet)
+
+### Install OpenKruise
+
+```bash
+helm repo add openkruise https://openkruise.github.io/charts/
+helm repo update
+helm upgrade --install kruise openkruise/kruise --version 1.9.0
+```
 
 ## Quick Start
 
@@ -326,6 +335,17 @@ helm install curvine ./curvine -n curvine --create-namespace \
 # From Local Chart
 helm install curvine ./curvine -n curvine --create-namespace \
   -f examples/values-baremetal.yaml
+```
+
+If you use `hostPath`, enable OpenKruise Advanced StatefulSet to avoid Pod drifting to another node during image upgrade:
+
+```bash
+helm upgrade --install curvine ./curvine -n curvine --create-namespace \
+  -f examples/values-baremetal.yaml \
+  --set openKruise.enabled=true \
+  --set openKruise.podUpdatePolicy=InPlaceOnly \
+  --set openKruise.persistentPodState.autoGenerate=true \
+  --set openKruise.persistentPodState.preferredPersistentTopology=kubernetes.io/hostname
 ```
 
 ### Custom Configuration

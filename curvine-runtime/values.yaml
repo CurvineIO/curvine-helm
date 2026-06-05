@@ -16,6 +16,20 @@ image:
   pullPolicy: IfNotPresent
   pullSecrets: []
 
+# OpenKruise advanced StatefulSet configuration
+openKruise:
+  # Enable OpenKruise Advanced StatefulSet for master/worker
+  enabled: false
+  # In-place image update policy: InPlaceOnly | InPlaceIfPossible | ReCreate
+  podUpdatePolicy: "InPlaceOnly"
+  # Auto-generate PersistentPodState for StatefulSet
+  persistentPodState:
+    autoGenerate: true
+    # Prefer returning to original node when available
+    preferredPersistentTopology: "kubernetes.io/hostname"
+    # Optional strict topology keys, e.g. failure-domain.beta.kubernetes.io/zone
+    requiredPersistentTopology: ""
+
 # Master node configuration
 master:
   # Number of master replicas (must be odd: 1, 3, 5, 7...)
@@ -108,6 +122,9 @@ worker:
   
   # DNS policy (ClusterFirstWithHostNet when hostNetwork is true)
   dnsPolicy: "ClusterFirst"
+
+  # Use Pod IP as CURVINE_WORKER_HOSTNAME instead of StatefulSet DNS
+  usePodIPAsHostname: false
   
   # Enable privileged mode for FUSE
   privileged: true

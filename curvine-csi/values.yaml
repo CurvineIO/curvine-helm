@@ -86,9 +86,9 @@ node:
   fuseDebugEnabled: false
 
   # Mount mode configuration
-  # - "standalone": FUSE runs in independent standalone pod (default, recommended)
-  # - "embedded": FUSE runs in CSI container (legacy mode)
-  mountMode: standalone
+  # - "embedded": FUSE runs in CSI container (default)
+  # - "standalone": FUSE runs in independent standalone pod (optional, for isolation)
+  mountMode: embedded
   
   # Standalone pod configuration
   standalone:

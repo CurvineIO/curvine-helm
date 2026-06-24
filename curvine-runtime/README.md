@@ -21,11 +21,20 @@ Confirm these prerequisites first:
   - a default `StorageClass`
   - explicit `storageClass` values in your values file
   - `hostPath` storage on bare metal
+- OpenKruise, if `openKruise.enabled=true`
 - Enough cluster capacity for the requested CPU and memory
 - If you use the production or bare-metal examples:
   - node labels already exist
   - required taints are tolerated
   - privileged Pods and `hostNetwork` are allowed when applicable
+
+### Install OpenKruise
+
+```bash
+helm repo add openkruise https://openkruise.github.io/charts/
+helm repo update
+helm upgrade --install kruise openkruise/kruise --version 1.9.0
+```
 
 The chart defaults are intentionally conservative so a first deployment is less likely to end in `Pending`.
 The chart also includes `values.schema.json` so invalid values can be rejected before rendering.

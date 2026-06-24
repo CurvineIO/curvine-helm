@@ -394,8 +394,8 @@ jobs:
     needs:
       - validate-inputs
       - create-release
-    # Only sync version-tag releases to the public curvine-doc Helm index
-    if: always() && needs.create-release.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.sync_to_doc == true
+    # Auto-sync on v* tag push; manual workflow_dispatch via sync_to_doc
+    if: always() && needs.create-release.result == 'success' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.sync_to_doc == true))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -404,14 +404,19 @@ jobs:
       - name: Checkout source repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.validate-inputs.outputs.manual_ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && needs.validate-inputs.outputs.manual_ref || github.ref }}
           path: source-repo
           fetch-depth: 0
 
       - name: Resolve sync source metadata
         id: source
         run: |
-          SOURCE_REF="${{ needs.validate-inputs.outputs.manual_ref }}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            SOURCE_REF="${{ needs.validate-inputs.outputs.manual_ref }}"
+          else
+            SOURCE_REF="${GITHUB_REF_NAME}"
+          fi
+
           SOURCE_SHA=$(git -C source-repo rev-parse HEAD)
           TAG="$SOURCE_REF"
           VERSION="${TAG#v}"

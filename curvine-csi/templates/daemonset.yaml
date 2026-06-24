@@ -48,8 +48,8 @@ spec:
               value: "true"
             {{- end }}
             # Mount mode configuration
-            # - "standalone": FUSE runs in independent standalone pod (default, recommended)
-            # - "embedded": FUSE runs in CSI container (legacy mode)
+            # - "embedded": FUSE runs in CSI container (default)
+            # - "standalone": FUSE runs in independent standalone pod (optional, for isolation)
             - name: MOUNT_MODE
               value: {{ .Values.node.mountMode | quote }}
             {{- if eq .Values.node.mountMode "standalone" }}
@@ -86,8 +86,13 @@ spec:
             - containerPort: {{ .Values.node.container.ports.healthz }}
               name: healthz
               protocol: TCP
+            - containerPort: {{ .Values.node.container.ports.metrics }}
+              name: metrics
+              protocol: TCP
           securityContext:
             {{- toYaml .Values.node.container.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.node.container.resources | nindent 12 }}
           volumeMounts:
             - mountPath: /csi
               name: plugin-dir

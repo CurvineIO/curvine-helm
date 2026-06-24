@@ -254,6 +254,10 @@ kubectl port-forward -n curvine svc/curvine-master 9000:9000
 | `master.storage.meta.size` | Metadata storage size | `10Gi` |
 | `master.storage.journal.storageClass` | Storage class for journal | `""` (default) |
 | `master.storage.journal.size` | Journal storage size | `50Gi` |
+| `master.antiAffinity.enabled` | Enable Master Pod anti-affinity outside hostPath mode | `false` |
+| `master.antiAffinity.type` | Master anti-affinity type outside hostPath mode | `required` |
+| `master.persistentTopology.enabled` | Add OpenKruise required persistent topology in hostPath mode | `true` |
+| `master.persistentTopology.key` | Node topology key for persistent master pods | `kubernetes.io/hostname` |
 
 ### Worker Configuration
 
@@ -374,6 +378,11 @@ worker:
 ```
 
 ### Using hostPath (Recommended for Bare Metal)
+
+When Master metadata or journal storage uses `hostPath`, the chart treats the
+data as node-local. For multi-Master deployments, it automatically adds required
+Pod anti-affinity and OpenKruise required persistent topology so that one Master
+pod cannot share another Master's node-local RocksDB paths.
 
 ```yaml
 master:

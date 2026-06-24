@@ -6,6 +6,11 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "curvine.masterLabels" . | nindent 4 }}
+  {{- $masterUsesHostPath := eq (include "curvine.masterUsesHostPath" .) "true" }}
+  {{- if and $masterUsesHostPath .Values.master.persistentTopology.enabled }}
+  annotations:
+    kruise.io/required-persistent-topology: {{ .Values.master.persistentTopology.key | quote }}
+  {{- end }}
 spec:
   serviceName: {{ include "curvine.masterServiceName" . }}
   replicas: {{ .Values.master.replicas }}
@@ -136,9 +141,17 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.master.affinity }}
+      {{- $masterAntiAffinity := include "curvine.masterAntiAffinity" . }}
+      {{- $masterAffinity := deepCopy (.Values.master.affinity | default dict) }}
+      {{- if $masterAntiAffinity }}
+        {{- if hasKey $masterAffinity "podAntiAffinity" }}
+          {{- fail "master.affinity.podAntiAffinity cannot be set when master anti-affinity is enabled; use master.antiAffinity instead" }}
+        {{- end }}
+        {{- $masterAffinity = merge $masterAffinity (fromYaml $masterAntiAffinity) }}
+      {{- end }}
+      {{- if $masterAffinity }}
       affinity:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml $masterAffinity | nindent 8 }}
       {{- end }}
       {{- with .Values.master.tolerations }}
       tolerations:

@@ -89,6 +89,12 @@ helm upgrade --install curvine ./curvine-runtime \
   -f ./curvine-runtime/examples/values-baremetal.yaml
 ```
 
+When Master metadata or journal storage uses `hostPath`, the chart treats the
+data as node-local. For multi-Master deployments, it adds required Pod
+anti-affinity and OpenKruise required persistent topology. This keeps each
+Master ordinal on its original node and prevents two Master pods from sharing
+the same node-local RocksDB paths.
+
 Do not use the production or bare-metal examples unchanged on a generic cluster. Edit storage classes, labels, and paths first.
 
 ## Verify

@@ -79,8 +79,21 @@ master:
   # Tolerations
   tolerations: []
   
-  # Affinity
+  # Pod anti-affinity to spread masters across nodes.
+  # In hostPath mode, this is forced on as required because each master stores
+  # raft metadata in node-local paths.
+  antiAffinity:
+    enabled: false
+    type: "required"
+
+  # Affinity (for custom node affinity, pod affinity rules)
   affinity: {}
+
+  # OpenKruise PersistentPodState topology for hostPath mode.
+  # Keeps each master ordinal on its original node.
+  persistentTopology:
+    enabled: true
+    key: "kubernetes.io/hostname"
   
   # Additional labels
   labels: {}

@@ -1,18 +1,24 @@
 {{- include "curvine.validateMasterReplicasOnUpgrade" . }}
-apiVersion: {{ ternary "apps.kruise.io/v1beta1" "apps/v1" .Values.openKruise.enabled }}
+{{- $masterUsesHostPath := eq (include "curvine.masterUsesHostPath" .) "true" }}
+{{- $masterPersistentTopologyEnabled := and $masterUsesHostPath .Values.master.persistentTopology.enabled }}
+{{- $useKruiseStatefulSet := or .Values.openKruise.enabled $masterPersistentTopologyEnabled }}
+apiVersion: {{ ternary "apps.kruise.io/v1beta1" "apps/v1" $useKruiseStatefulSet }}
 kind: StatefulSet
 metadata:
   name: {{ include "curvine.masterFullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "curvine.masterLabels" . | nindent 4 }}
-  {{- if and .Values.openKruise.enabled .Values.openKruise.persistentPodState.autoGenerate }}
+  {{- $generatePersistentPodState := or (and .Values.openKruise.enabled .Values.openKruise.persistentPodState.autoGenerate) $masterPersistentTopologyEnabled }}
+  {{- if $generatePersistentPodState }}
   annotations:
     kruise.io/auto-generate-persistent-pod-state: "true"
-    {{- if .Values.openKruise.persistentPodState.preferredPersistentTopology }}
+    {{- if and (not $masterPersistentTopologyEnabled) .Values.openKruise.persistentPodState.preferredPersistentTopology }}
     kruise.io/preferred-persistent-topology: {{ .Values.openKruise.persistentPodState.preferredPersistentTopology | quote }}
     {{- end }}
-    {{- if .Values.openKruise.persistentPodState.requiredPersistentTopology }}
+    {{- if $masterPersistentTopologyEnabled }}
+    kruise.io/required-persistent-topology: {{ .Values.master.persistentTopology.key | quote }}
+    {{- else if .Values.openKruise.persistentPodState.requiredPersistentTopology }}
     kruise.io/required-persistent-topology: {{ .Values.openKruise.persistentPodState.requiredPersistentTopology | quote }}
     {{- end }}
   {{- end }}
@@ -25,7 +31,7 @@ spec:
   podManagementPolicy: Parallel
   updateStrategy:
     type: RollingUpdate
-    {{- if .Values.openKruise.enabled }}
+    {{- if $useKruiseStatefulSet }}
     rollingUpdate:
       podUpdatePolicy: {{ .Values.openKruise.podUpdatePolicy }}
     {{- end }}
@@ -45,7 +51,7 @@ spec:
     spec:
       serviceAccountName: {{ include "curvine.serviceAccountName" . }}
       {{- include "curvine.imagePullSecrets" . | nindent 6 }}
-      {{- if .Values.openKruise.enabled }}
+      {{- if $useKruiseStatefulSet }}
       readinessGates:
         - conditionType: InPlaceUpdateReady
       {{- end }}
@@ -154,9 +160,17 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.master.affinity }}
+      {{- $masterAntiAffinity := include "curvine.masterAntiAffinity" . }}
+      {{- $masterAffinity := deepCopy (.Values.master.affinity | default dict) }}
+      {{- if $masterAntiAffinity }}
+        {{- if hasKey $masterAffinity "podAntiAffinity" }}
+          {{- fail "master.affinity.podAntiAffinity cannot be set when master anti-affinity is enabled; use master.antiAffinity instead" }}
+        {{- end }}
+        {{- $masterAffinity = merge $masterAffinity (fromYaml $masterAntiAffinity) }}
+      {{- end }}
+      {{- if $masterAffinity }}
       affinity:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml $masterAffinity | nindent 8 }}
       {{- end }}
       {{- with .Values.master.tolerations }}
       tolerations:

@@ -1,15 +1,26 @@
 {{- include "curvine.validateMasterReplicasOnUpgrade" . }}
-apiVersion: apps/v1
+{{- $masterUsesHostPath := eq (include "curvine.masterUsesHostPath" .) "true" }}
+{{- $masterPersistentTopologyEnabled := and $masterUsesHostPath .Values.master.persistentTopology.enabled }}
+{{- $useKruiseStatefulSet := or .Values.openKruise.enabled $masterPersistentTopologyEnabled }}
+apiVersion: {{ ternary "apps.kruise.io/v1beta1" "apps/v1" $useKruiseStatefulSet }}
 kind: StatefulSet
 metadata:
   name: {{ include "curvine.masterFullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "curvine.masterLabels" . | nindent 4 }}
-  {{- $masterUsesHostPath := eq (include "curvine.masterUsesHostPath" .) "true" }}
-  {{- if and $masterUsesHostPath .Values.master.persistentTopology.enabled }}
+  {{- $generatePersistentPodState := or (and .Values.openKruise.enabled .Values.openKruise.persistentPodState.autoGenerate) $masterPersistentTopologyEnabled }}
+  {{- if $generatePersistentPodState }}
   annotations:
+    kruise.io/auto-generate-persistent-pod-state: "true"
+    {{- if and (not $masterPersistentTopologyEnabled) .Values.openKruise.persistentPodState.preferredPersistentTopology }}
+    kruise.io/preferred-persistent-topology: {{ .Values.openKruise.persistentPodState.preferredPersistentTopology | quote }}
+    {{- end }}
+    {{- if $masterPersistentTopologyEnabled }}
     kruise.io/required-persistent-topology: {{ .Values.master.persistentTopology.key | quote }}
+    {{- else if .Values.openKruise.persistentPodState.requiredPersistentTopology }}
+    kruise.io/required-persistent-topology: {{ .Values.openKruise.persistentPodState.requiredPersistentTopology | quote }}
+    {{- end }}
   {{- end }}
 spec:
   serviceName: {{ include "curvine.masterServiceName" . }}
@@ -20,6 +31,10 @@ spec:
   podManagementPolicy: Parallel
   updateStrategy:
     type: RollingUpdate
+    {{- if $useKruiseStatefulSet }}
+    rollingUpdate:
+      podUpdatePolicy: {{ .Values.openKruise.podUpdatePolicy }}
+    {{- end }}
   template:
     metadata:
       labels:
@@ -36,6 +51,10 @@ spec:
     spec:
       serviceAccountName: {{ include "curvine.serviceAccountName" . }}
       {{- include "curvine.imagePullSecrets" . | nindent 6 }}
+      {{- if $useKruiseStatefulSet }}
+      readinessGates:
+        - conditionType: InPlaceUpdateReady
+      {{- end }}
       containers:
         - name: master
           image: {{ include "curvine.image" . }}

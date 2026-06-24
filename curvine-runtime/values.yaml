@@ -12,9 +12,23 @@ cluster:
 # Image configuration
 image:
   repository: ghcr.io/curvineio/curvine
-  tag: "latest"
+  tag: "v0.2.0-alpha"
   pullPolicy: IfNotPresent
   pullSecrets: []
+
+# OpenKruise advanced StatefulSet configuration
+openKruise:
+  # Enable OpenKruise Advanced StatefulSet for master/worker
+  enabled: false
+  # In-place image update policy: InPlaceOnly | InPlaceIfPossible | ReCreate
+  podUpdatePolicy: "InPlaceOnly"
+  # Auto-generate PersistentPodState for StatefulSet
+  persistentPodState:
+    autoGenerate: true
+    # Prefer returning to original node when available
+    preferredPersistentTopology: "kubernetes.io/hostname"
+    # Optional strict topology keys, e.g. failure-domain.beta.kubernetes.io/zone
+    requiredPersistentTopology: ""
 
 # Master node configuration
 master:
@@ -110,6 +124,7 @@ worker:
   s3Gateway:
     enabled: false
     listen: "0.0.0.0:9900"
+    enableDistributedAuth: true  # Enable distributed authentication for S3 Gateway
     service:
       type: ClusterIP        # ClusterIP | LoadBalancer | NodePort
       annotations: {}
@@ -120,6 +135,9 @@ worker:
   
   # DNS policy (ClusterFirstWithHostNet when hostNetwork is true)
   dnsPolicy: "ClusterFirst"
+
+  # Use Pod IP as CURVINE_WORKER_HOSTNAME instead of StatefulSet DNS
+  usePodIPAsHostname: false
   
   # Enable privileged mode for FUSE
   privileged: true
@@ -225,6 +243,8 @@ config:
   journal:
     enable: true
     journalDir: "/opt/curvine/data/journal"
+    snapshotInterval: "6h"
+    snapshotEntries: 1000000
   
   # Worker configuration
   worker:

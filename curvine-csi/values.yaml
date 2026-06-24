@@ -4,7 +4,7 @@
 # Image settings
 image:
   repository: ghcr.io/curvineio/curvine-csi
-  tag: latest
+  tag: v0.2.0-alpha
   pullPolicy: Always
 
 # CSI Driver settings
@@ -86,13 +86,23 @@ node:
   fuseDebugEnabled: false
 
   # Mount mode configuration
-  # - "standalone": FUSE runs in independent standalone pod (default, recommended)
-  # - "embedded": FUSE runs in CSI container (legacy mode)
-  mountMode: standalone
+  # - "embedded": FUSE runs in CSI container (default)
+  # - "standalone": FUSE runs in independent standalone pod (optional, for isolation)
+  mountMode: embedded
   
-  # Standalone pod image (used when mountMode=standalone)
-  # Defaults to same image as CSI if not specified
-  standaloneImage: ghcr.io/curvineio/curvine-csi:latest
+  # Standalone pod configuration
+  standalone:
+    # Image for standalone pod (defaults to main CSI image if not set)
+    image: ""
+    
+    # Resource limits for standalone pod
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "2"
+        memory: "2Gi"
 
   # Node container settings
   container:
@@ -117,6 +127,7 @@ node:
     # Ports
     ports:
       healthz: 9909
+      metrics: 9002
 
     # Security context
     securityContext:
@@ -130,6 +141,15 @@ node:
             - /bin/sh
             - -c
             - rm /csi/csi.sock
+
+    # Resource limits for embedded mode (when mountMode is "embedded")
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "2"
+        memory: "2Gi"
 
   # Sidecar containers
   sidecars:

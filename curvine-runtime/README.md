@@ -161,6 +161,15 @@ graph TB
 - Kubernetes 1.20+
 - Helm 3.0+
 - PV provisioner (if using PVC storage)
+- OpenKruise (required when enabling Advanced StatefulSet)
+
+### Install OpenKruise
+
+```bash
+helm repo add openkruise https://openkruise.github.io/charts/
+helm repo update
+helm upgrade --install kruise openkruise/kruise --version 1.9.0
+```
 
 ## Quick Start
 
@@ -332,6 +341,16 @@ helm install curvine ./curvine -n curvine --create-namespace \
   -f examples/values-baremetal.yaml
 ```
 
+When Master metadata or journal storage uses `hostPath`, the chart automatically
+uses OpenKruise Advanced StatefulSet for masters and adds required persistent
+topology. The cluster must have OpenKruise installed unless you explicitly set
+`master.persistentTopology.enabled=false`.
+
+```bash
+helm upgrade --install curvine ./curvine -n curvine --create-namespace \
+  -f examples/values-baremetal.yaml
+```
+
 ### Custom Configuration
 
 ```bash
@@ -381,8 +400,9 @@ worker:
 
 When Master metadata or journal storage uses `hostPath`, the chart treats the
 data as node-local. For multi-Master deployments, it automatically adds required
-Pod anti-affinity and OpenKruise required persistent topology so that one Master
-pod cannot share another Master's node-local RocksDB paths.
+Pod anti-affinity and OpenKruise required persistent topology. This keeps each
+Master ordinal on its original node and prevents two Master pods from sharing
+the same node-local RocksDB paths.
 
 ```yaml
 master:

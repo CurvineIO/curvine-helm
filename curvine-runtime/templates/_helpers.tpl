@@ -320,9 +320,18 @@ Validate master replicas - ensure they cannot be changed on upgrade
 */}}
 {{- define "curvine.validateMasterReplicasOnUpgrade" -}}
 {{- if .Release.IsUpgrade }}
-{{- $currentReplicas := (lookup "apps/v1" "StatefulSet" .Release.Namespace (include "curvine.masterFullname" .)).spec.replicas | default 0 }}
-{{- if and (ne $currentReplicas 0) (ne $currentReplicas (int .Values.master.replicas)) }}
-{{- fail (printf "ERROR: Master replicas cannot be changed during upgrade! Current: %d, Requested: %d. To change master replicas, delete and redeploy the cluster." $currentReplicas (int .Values.master.replicas)) }}
+{{- $masterName := include "curvine.masterFullname" . }}
+{{- $sts := lookup "apps/v1" "StatefulSet" .Release.Namespace $masterName }}
+{{- if not $sts }}
+{{- $sts = lookup "apps.kruise.io/v1beta1" "StatefulSet" .Release.Namespace $masterName }}
+{{- end }}
+{{- $currentReplicas := dig "spec" "replicas" 0 ($sts | default dict) | int }}
+{{- $requestedReplicas := 3 }}
+{{- if .Values.master }}
+{{- $requestedReplicas = (.Values.master.replicas | default 3 | int) }}
+{{- end }}
+{{- if and (ne $currentReplicas 0) (ne $currentReplicas $requestedReplicas) }}
+{{- fail (printf "ERROR: Master replicas cannot be changed during upgrade! Current: %d, Requested: %d. To change master replicas, delete and redeploy the cluster." $currentReplicas $requestedReplicas) }}
 {{- end }}
 {{- end }}
 {{- end }}

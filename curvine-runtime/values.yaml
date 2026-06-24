@@ -230,8 +230,8 @@ config:
   journal:
     enable: true
     journalDir: "/opt/curvine/data/journal"
-    snapshotInterval: "30s"
-    snapshotEntries: 100
+    snapshotInterval: "6h"
+    snapshotEntries: 1000000
   
   # Worker configuration
   worker:

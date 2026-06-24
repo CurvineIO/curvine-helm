@@ -355,7 +355,20 @@
           "type": "object"
         },
         "log": {
-          "type": "object"
+          "type": "object",
+          "properties": {
+            "level": {
+              "type": "string",
+              "minLength": 1
+            },
+            "logDir": {
+              "type": "string"
+            },
+            "console": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
         }
       },
       "additionalProperties": true

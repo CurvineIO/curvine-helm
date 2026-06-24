@@ -13,6 +13,10 @@ data:
     format_master = {{ .Values.cluster.formatMaster | default false }}
     format_worker = {{ .Values.cluster.formatWorker | default false }}
     enable_s3_gateway = {{ .Values.worker.s3Gateway.enabled | default false }}
+    {{- $logDir := .Values.config.log.logDir }}
+    {{- if .Values.config.log.console }}
+    {{- $logDir = "stdout" }}
+    {{- end }}
 
     {{- $metaDir := .Values.config.master.metaDir }}
     {{- $metaMount := .Values.master.storage.meta.mountPath }}
@@ -44,8 +48,13 @@ data:
     web1_port = {{ .Values.master.web1Port }}
     {{- if .Values.configOverrides.master }}
     {{- range $key, $value := .Values.configOverrides.master }}
+    {{- if not (and $.Values.config.log.console (eq $key "log.log_dir")) }}
     {{ $key }} = {{ toJson $value }}
     {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- if .Values.config.log.console }}
+    log.log_dir = "stdout"
     {{- end }}
 
     [journal]
@@ -76,8 +85,13 @@ data:
     enable_distributed_auth = {{ .Values.worker.s3Gateway.enableDistributedAuth | default true }}
     {{- if .Values.configOverrides.worker }}
     {{- range $key, $value := .Values.configOverrides.worker }}
+    {{- if not (and $.Values.config.log.console (eq $key "log.log_dir")) }}
     {{ $key }} = {{ toJson $value }}
     {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- if .Values.config.log.console }}
+    log.log_dir = "stdout"
     {{- end }}
 
     [s3_gateway]
@@ -106,9 +120,11 @@ data:
 
     [log]
     level = "{{ .Values.config.log.level }}"
-    log_dir = "{{ .Values.config.log.logDir }}"
+    log_dir = "{{ $logDir }}"
     {{- if .Values.configOverrides.log }}
     {{- range $key, $value := .Values.configOverrides.log }}
+    {{- if not (and $.Values.config.log.console (eq $key "log_dir")) }}
     {{ $key }} = {{ toJson $value }}
+    {{- end }}
     {{- end }}
     {{- end }}

@@ -263,6 +263,9 @@ config:
   log:
     level: "INFO"
     logDir: "/opt/curvine/logs"
+    # When true, route Curvine service logs to stdout for kubectl logs.
+    # This follows the same intent as StarRocks LOG_CONSOLE=1.
+    console: true
 
 # Configuration overrides by section
 # These allow you to override specific configuration items in each section

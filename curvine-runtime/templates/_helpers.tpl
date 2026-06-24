@@ -249,6 +249,48 @@ Return the proper Storage Class for Master Journal
 {{- end }}
 
 {{/*
+Whether master metadata or journal uses hostPath storage.
+*/}}
+{{- define "curvine.masterUsesHostPath" -}}
+{{- if or .Values.master.storage.meta.hostPath .Values.master.storage.journal.hostPath -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+Master anti-affinity rules.
+hostPath masters must not share a Kubernetes node because their local RocksDB
+state is mounted from the same host paths.
+*/}}
+{{- define "curvine.masterAntiAffinity" -}}
+{{- $usesHostPath := eq (include "curvine.masterUsesHostPath" .) "true" -}}
+{{- $enabled := .Values.master.antiAffinity.enabled -}}
+{{- $type := .Values.master.antiAffinity.type -}}
+{{- if $usesHostPath -}}
+{{- $enabled = true -}}
+{{- $type = "required" -}}
+{{- end -}}
+{{- if and $enabled (gt (int .Values.master.replicas) 1) }}
+podAntiAffinity:
+  {{- if eq $type "preferred" }}
+  preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            {{- include "curvine.masterSelectorLabels" . | nindent 12 }}
+        topologyKey: kubernetes.io/hostname
+  {{- else }}
+  requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchLabels:
+          {{- include "curvine.masterSelectorLabels" . | nindent 10 }}
+      topologyKey: kubernetes.io/hostname
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Worker anti-affinity rules
 */}}
 {{- define "curvine.workerAntiAffinity" -}}

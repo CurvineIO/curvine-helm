@@ -191,9 +191,9 @@ node:
 # Service Account settings
 serviceAccount:
   controller:
-    name: curvine-csi-controller-sa
+    name: ""  # Default derives from the release name
   node:
-    name: curvine-csi-node-sa
+    name: ""  # Default derives from the release name
 
 # RBAC settings
 rbac:

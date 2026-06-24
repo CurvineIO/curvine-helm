@@ -46,7 +46,7 @@ spec:
             - name: MOUNT_MODE
               value: {{ .Values.node.mountMode | quote }}
             - name: STANDALONE_IMAGE
-              value: {{ .Values.node.standaloneImage | quote }}
+              value: "{{ .Values.node.standalone.image | default .Values.image.repository }}:{{ .Values.image.tag }}"
             - name: STANDALONE_SERVICE_ACCOUNT
               value: {{ include "curvine-csi.nodeServiceAccountName" . | quote }}
           livenessProbe:

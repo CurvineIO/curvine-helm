@@ -1,34 +1,29 @@
 # Development environment configuration
-# Minimal resources for local testing
+# Intended for local validation and small non-production clusters.
+# Relies on the chart's default image settings.
 
 cluster:
   id: "curvine-dev"
 
-image:
-  repository: docker.io/curvine
-  tag: "latest"
-  pullPolicy: IfNotPresent
-
 # Single master for development
 master:
   replicas: 1
-  
+
   storage:
     meta:
       enabled: true
-      storageClass: ""  # Use default or emptyDir
+      storageClass: ""  # Requires a default StorageClass when hostPath is empty
       size: "5Gi"
       hostPath: ""
       mountPath: "/opt/curvine/data/meta"
-    
+
     journal:
       enabled: true
-      storageClass: ""
+      storageClass: ""  # Requires a default StorageClass when hostPath is empty
       size: "10Gi"
       hostPath: ""
       mountPath: "/opt/curvine/data/journal"
-  
-  # Minimal resources for development
+
   resources:
     requests:
       cpu: "500m"
@@ -37,24 +32,22 @@ master:
       cpu: "1000m"
       memory: "2Gi"
 
-# Single worker for development
 worker:
   replicas: 1
-  
+
   hostNetwork: false
   privileged: true
-  
+
   storage:
     dataDirs:
       - name: "data1"
         type: "SSD"
         enabled: true
         size: "20Gi"
-        storageClass: ""
+        storageClass: ""  # Requires a default StorageClass when hostPath is empty
         hostPath: ""
         mountPath: "/data/data1"
-  
-  # Minimal resources for development
+
   resources:
     requests:
       cpu: "500m"
@@ -62,8 +55,7 @@ worker:
     limits:
       cpu: "1000m"
       memory: "2Gi"
-  
-  # Disable anti-affinity for single node testing
+
   antiAffinity:
     enabled: false
 

@@ -25,7 +25,7 @@ spec:
       dnsPolicy: {{ .Values.node.dnsPolicy }}
       containers:
         - name: {{ .Values.node.container.name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: {{ include "curvine-csi.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: {{ .Values.node.container.command | toJson }}
           args:
@@ -55,7 +55,7 @@ spec:
             {{- if eq .Values.node.mountMode "standalone" }}
             # Standalone pod configuration
             - name: STANDALONE_IMAGE
-              value: "{{ .Values.node.standalone.image | default .Values.image.repository }}:{{ .Values.image.tag }}"
+              value: {{ include "curvine-csi.standaloneImage" . | quote }}
             - name: STANDALONE_SERVICE_ACCOUNT
               value: {{ include "curvine-csi.nodeServiceAccountName" . | quote }}
             - name: STANDALONE_CPU_REQUEST

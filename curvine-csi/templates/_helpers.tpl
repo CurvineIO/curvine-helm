@@ -88,3 +88,31 @@ Create the name for node cluster role
 {{- define "curvine-csi.nodeClusterRoleName" -}}
 {{- printf "%s-%s" (include "curvine-csi.fullname" .) "node" | trunc 63 | trimSuffix "-" }}
 {{- end }}
+
+{{/*
+Image tag defaults to v{Chart.AppVersion} when values.image.tag is empty.
+*/}}
+{{- define "curvine-csi.imageTag" -}}
+{{- if .Values.image.tag -}}
+{{- .Values.image.tag -}}
+{{- else if hasPrefix "v" .Chart.AppVersion -}}
+{{- .Chart.AppVersion -}}
+{{- else -}}
+{{- printf "v%s" .Chart.AppVersion -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Full CSI image reference
+*/}}
+{{- define "curvine-csi.image" -}}
+{{- printf "%s:%s" .Values.image.repository (include "curvine-csi.imageTag" .) }}
+{{- end }}
+
+{{/*
+Standalone FUSE pod image reference (repository may differ from CSI image)
+*/}}
+{{- define "curvine-csi.standaloneImage" -}}
+{{- $repository := .Values.node.standalone.image | default .Values.image.repository -}}
+{{- printf "%s:%s" $repository (include "curvine-csi.imageTag" .) }}
+{{- end }}

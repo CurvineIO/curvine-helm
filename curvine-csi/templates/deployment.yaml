@@ -25,7 +25,7 @@ spec:
       {{- end }}
       containers:
         - name: {{ .Values.controller.container.name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: {{ include "curvine-csi.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: {{ .Values.controller.container.command | toJson }}
           args:
@@ -46,7 +46,7 @@ spec:
             - name: MOUNT_MODE
               value: {{ .Values.node.mountMode | quote }}
             - name: STANDALONE_IMAGE
-              value: "{{ .Values.node.standalone.image | default .Values.image.repository }}:{{ .Values.image.tag }}"
+              value: {{ include "curvine-csi.standaloneImage" . | quote }}
             - name: STANDALONE_SERVICE_ACCOUNT
               value: {{ include "curvine-csi.nodeServiceAccountName" . | quote }}
           livenessProbe:

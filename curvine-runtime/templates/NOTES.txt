@@ -23,5 +23,7 @@ Upgrade in place:
   helm upgrade --install {{ .Release.Name }} <chart-ref> -n {{ .Release.Namespace }} -f values.yaml
 
 Important:
+  - cluster.formatMaster=false protects existing master data and requires existing RocksDB directories
+  - Bootstrap empty master storage once with cluster.formatMaster=true, then immediately upgrade back to false
   - Reuse the same release name and namespace when re-deploying with existing PVCs
   - Do not change master.replicas during an in-place upgrade

@@ -105,20 +105,29 @@ spec:
             - name: web1
               containerPort: {{ .Values.master.web1Port }}
               protocol: TCP
+          {{- if .Values.master.startupProbe.enabled }}
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.master.rpcPort }}
+            initialDelaySeconds: {{ .Values.master.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.master.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.master.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.master.startupProbe.failureThreshold }}
+          {{- end }}
           livenessProbe:
             tcpSocket:
               port: {{ .Values.master.rpcPort }}
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            initialDelaySeconds: {{ .Values.master.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.master.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.master.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.master.livenessProbe.failureThreshold }}
           readinessProbe:
             tcpSocket:
               port: {{ .Values.master.rpcPort }}
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 3
+            initialDelaySeconds: {{ .Values.master.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.master.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.master.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.master.readinessProbe.failureThreshold }}
           resources:
             {{- toYaml .Values.master.resources | nindent 12 }}
           volumeMounts:

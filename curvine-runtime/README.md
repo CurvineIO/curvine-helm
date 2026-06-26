@@ -11,7 +11,21 @@ Helm chart for deploying a Curvine runtime cluster on Kubernetes.
 
 When installing from a Helm repository, use `curvineio/curvine`. When installing from this repository, use `./curvine-runtime`.
 
-## Before You Install
+## Versioning and Images
+
+This chart leaves `values.image.tag` empty by default. Templates resolve the effective image tag
+from `Chart.appVersion`:
+
+| `Chart.appVersion` | Default image tag |
+| --- | --- |
+| `0.3.0` | `v0.3.0` |
+| `latest` | `latest` |
+
+On versioned releases, `Chart.version` and `Chart.appVersion` match. On `main` branch test
+packages, `Chart.version` is `<base>-dev` while `appVersion` is `latest`.
+
+See the repository [README](../README.md#versioning-model) for the full version mapping and
+release workflow.
 
 Confirm these prerequisites first:
 

@@ -87,6 +87,15 @@
           "minimum": 1,
           "maximum": 65535
         },
+        "startupProbe": {
+          "$ref": "#/definitions/probe"
+        },
+        "livenessProbe": {
+          "$ref": "#/definitions/probe"
+        },
+        "readinessProbe": {
+          "$ref": "#/definitions/probe"
+        },
         "storage": {
           "type": "object",
           "properties": {
@@ -405,6 +414,31 @@
         },
         "limits": {
           "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "probe": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
         }
       },
       "additionalProperties": true

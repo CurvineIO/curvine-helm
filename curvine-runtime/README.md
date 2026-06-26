@@ -74,6 +74,29 @@ helm upgrade --install curvine ./curvine-runtime \
   --create-namespace
 ```
 
+### Bootstrap Empty Master Storage
+
+`cluster.formatMaster` defaults to `false` to protect existing master metadata
+and Raft journals. Empty master storage needs an explicit bootstrap:
+
+```bash
+helm upgrade --install curvine ./curvine-runtime \
+  -n curvine \
+  --create-namespace \
+  --set cluster.formatMaster=true
+
+kubectl rollout status statefulset/curvine-master -n curvine
+
+helm upgrade --install curvine ./curvine-runtime \
+  -n curvine \
+  --set cluster.formatMaster=false
+```
+
+Do this only for a new cluster or a rebuild where data loss is acceptable. For
+an existing HA master, never clear one ordinal and restart it empty with
+`cluster.formatMaster=false`; copy a consistent meta and journal snapshot from a
+healthy master or rebuild the whole cluster.
+
 ### With Example Values
 
 Development:
@@ -108,6 +131,12 @@ data as node-local. For multi-Master deployments, it adds required Pod
 anti-affinity and OpenKruise required persistent topology. This keeps each
 Master ordinal on its original node and prevents two Master pods from sharing
 the same node-local RocksDB paths.
+
+Master startup is intentionally protected by `master.startupProbe`. A Master
+does not open the RPC port until Raft snapshot restore and metadata tree rebuild
+finish. In production, a 700 MiB checkpoint has taken about 4 minutes to rebuild,
+so short liveness-only probing can kill a healthy restore loop before the process
+can become ready.
 
 Do not use the production or bare-metal examples unchanged on a generic cluster. Edit storage classes, labels, and paths first.
 

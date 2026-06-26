@@ -9,6 +9,22 @@ Helm chart for deploying the Curvine CSI driver.
 - Recommended release name: `curvine-csi`
 - Recommended namespace: `curvine-system`
 
+## Versioning and Images
+
+This chart leaves `values.image.tag` empty by default. Templates resolve the effective image tag
+from `Chart.appVersion`:
+
+| `Chart.appVersion` | Default image tag |
+| --- | --- |
+| `0.3.0` | `v0.3.0` |
+| `latest` | `latest` |
+
+On versioned releases, `Chart.version` and `Chart.appVersion` match. On `main` branch test
+packages, `Chart.version` is `<base>-dev` while `appVersion` is `latest`.
+
+See the repository [README](../README.md#versioning-model) for the full version mapping and
+release workflow.
+
 ## Prerequisites
 
 - Kubernetes 1.19+
@@ -52,7 +68,7 @@ helm upgrade --install curvine-csi ./curvine-csi \
 | Key | Description | Default |
 | --- | --- | --- |
 | `image.repository` | CSI image repository | `ghcr.io/curvineio/curvine-csi` |
-| `image.tag` | CSI image tag (empty uses `v{Chart.AppVersion}`) | `""` |
+| `image.tag` | CSI image tag (empty uses `latest` when `Chart.AppVersion` is `latest`, otherwise `v{Chart.AppVersion}`) | `""` |
 | `csiDriver.name` | CSI driver name | `curvine` |
 | `controller.replicas` | Controller replica count | `1` |
 | `node.mountMode` | FUSE mount strategy | `standalone` |

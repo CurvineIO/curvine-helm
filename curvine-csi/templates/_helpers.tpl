@@ -95,6 +95,8 @@ Image tag defaults to v{Chart.AppVersion} when values.image.tag is empty.
 {{- define "curvine-csi.imageTag" -}}
 {{- if .Values.image.tag -}}
 {{- .Values.image.tag -}}
+{{- else if eq .Chart.AppVersion "latest" -}}
+{{- "latest" -}}
 {{- else if hasPrefix "v" .Chart.AppVersion -}}
 {{- .Chart.AppVersion -}}
 {{- else -}}

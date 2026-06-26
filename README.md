@@ -75,16 +75,22 @@ every release.
 
 ### Version Fields
 
-| Field | Example | Where It Lives | Meaning |
-| --- | --- | --- | --- |
-| Curvine git tag | `v0.3.0` | `CurvineIO/curvine` | Application release tag |
-| Container image tag | `v0.3.0` | `ghcr.io/curvineio/curvine`, `ghcr.io/curvineio/curvine-csi` | Image built from the matching Curvine tag |
-| Helm git tag | `v0.3.0` | `CurvineIO/curvine-helm` | Chart release tag in this repository |
-| `Chart.version` | `0.3.0` | `Chart.yaml` | Helm chart package version |
-| `Chart.appVersion` | `0.3.0` | `Chart.yaml` | Application version deployed by the chart |
-| `values.image.tag` | `""` | `values.yaml` | Optional image tag override |
+| Field | Versioned Release Example | Main Branch Dev Example | Where It Lives | Meaning |
+| --- | --- | --- | --- | --- |
+| Curvine git tag | `v0.3.0` | — | `CurvineIO/curvine` | Application release tag |
+| Container image tag | `v0.3.0` | `latest` | `ghcr.io/curvineio/curvine`, `ghcr.io/curvineio/curvine-csi` | Image pulled by workloads |
+| Helm git tag | `v0.3.0` | — | `CurvineIO/curvine-helm` | Chart release tag in this repository |
+| `Chart.version` | `0.3.0` | `0.2.0-dev` | `Chart.yaml` | Helm chart package version |
+| `Chart.appVersion` | `0.3.0` | `latest` | `Chart.yaml` | Application version deployed by the chart |
+| `values.image.tag` | `""` | `""` | `values.yaml` | Optional image tag override |
+
+`Chart.version` identifies the chart package. `Chart.appVersion` identifies the application
+binaries/images the chart deploys. They match on versioned releases, but diverge on `main`
+branch test packages.
 
 ### How They Relate
+
+Versioned release:
 
 ```mermaid
 flowchart LR
@@ -95,6 +101,16 @@ flowchart LR
   B -. same version .- F
 ```
 
+`main` branch test package:
+
+```mermaid
+flowchart LR
+  M["push to main"] --> CV["Chart.version<br/>0.2.0-dev"]
+  M --> AV["Chart.appVersion<br/>latest"]
+  AV --> IT["default image tag<br/>latest"]
+  IMG["container image<br/>latest"] -. rolling image .- IT
+```
+
 Rules:
 
 1. **Curvine release drives images.** Pushing `v0.3.0` in `CurvineIO/curvine` builds and publishes
@@ -102,20 +118,21 @@ Rules:
 2. **Helm release drives chart metadata.** Pushing `v0.3.0` in this repository packages charts with
    `version: 0.3.0` and `appVersion: "0.3.0"`.
 3. **Image tag defaults from `appVersion`.** `values.yaml` leaves `image.tag` empty. Templates
-   resolve it to `v{Chart.AppVersion}` (for example `0.3.0` becomes `v0.3.0`).
-4. **`Chart.version` and `Chart.appVersion` usually match** for application releases. They can
-   diverge when only chart templates or defaults change without a new Curvine application release.
-5. **Override when needed.** Use `--set image.tag=...` for custom images, hotfixes, or dev builds.
+   resolve it to `latest` when `Chart.AppVersion` is `latest`, otherwise `v{Chart.AppVersion}`
+   (for example `0.3.0` becomes `v0.3.0`).
+4. **`Chart.version` and `Chart.appVersion` usually match** for versioned releases. For `main`
+   branch test packages, `Chart.version` stays `<base>-dev` while `appVersion` is `latest`.
+5. **Override when needed.** Use `--set image.tag=...` for custom images, hotfixes, or pinned builds.
 
 ### Release Mapping
 
 | Trigger in `curvine-helm` | `Chart.version` | `Chart.appVersion` | Default `image.tag` |
 | --- | --- | --- | --- |
 | Push `v0.3.0` tag | `0.3.0` | `0.3.0` | `v0.3.0` |
-| Push to `main` | `<base>-dev` | `<base>-dev` | `v<base>-dev` |
+| Push to `main` | `<base>-dev` | `latest` | `latest` |
 
-For `main` branch test packages, the default image tag may not exist in the registry. Use
-`--set image.tag=latest` when installing a `-dev` chart against development images.
+`main` branch test packages use rolling `latest` images from the registry. The chart package
+version remains `<base>-dev` so it does not collide with versioned releases.
 
 ### Example: Versioned Release
 
@@ -137,6 +154,23 @@ helm repo add curvineio https://curvineio.github.io/curvine-doc/helm-charts
 helm repo update
 helm upgrade --install curvine curvineio/curvine --version 0.3.0 -n curvine --create-namespace
 ```
+
+### Example: Main Branch Dev Release
+
+```bash
+# 1. Merge chart changes to main
+#    GitHub Actions packages charts into the `latest` test release:
+#    chart package version: 0.2.0-dev
+#    chart appVersion: latest
+#    rendered image: ghcr.io/curvineio/curvine:latest
+
+# 2. Install the rolling test package from GitHub Releases
+wget https://github.com/CurvineIO/curvine-helm/releases/download/latest/curvine-0.2.0-dev.tgz
+helm upgrade --install curvine ./curvine-0.2.0-dev.tgz -n curvine --create-namespace
+```
+
+Use this flow for chart development and integration testing only. For production, install a
+versioned chart that matches a Curvine release tag.
 
 ### Example: Override Image Tag
 

@@ -196,6 +196,8 @@ Curvine container images use a v-prefixed tag (e.g. v0.3.0); Chart.AppVersion om
 {{- define "curvine.imageTag" -}}
 {{- if .Values.image.tag -}}
 {{- .Values.image.tag -}}
+{{- else if eq .Chart.AppVersion "latest" -}}
+{{- "latest" -}}
 {{- else if hasPrefix "v" .Chart.AppVersion -}}
 {{- .Chart.AppVersion -}}
 {{- else -}}

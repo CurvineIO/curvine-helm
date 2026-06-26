@@ -102,20 +102,21 @@ Rules:
 2. **Helm release drives chart metadata.** Pushing `v0.3.0` in this repository packages charts with
    `version: 0.3.0` and `appVersion: "0.3.0"`.
 3. **Image tag defaults from `appVersion`.** `values.yaml` leaves `image.tag` empty. Templates
-   resolve it to `v{Chart.AppVersion}` (for example `0.3.0` becomes `v0.3.0`).
-4. **`Chart.version` and `Chart.appVersion` usually match** for application releases. They can
-   diverge when only chart templates or defaults change without a new Curvine application release.
-5. **Override when needed.** Use `--set image.tag=...` for custom images, hotfixes, or dev builds.
+   resolve it to `latest` when `Chart.AppVersion` is `latest`, otherwise `v{Chart.AppVersion}`
+   (for example `0.3.0` becomes `v0.3.0`).
+4. **`Chart.version` and `Chart.appVersion` usually match** for versioned releases. For `main`
+   branch test packages, `Chart.version` stays `<base>-dev` while `appVersion` is `latest`.
+5. **Override when needed.** Use `--set image.tag=...` for custom images, hotfixes, or pinned builds.
 
 ### Release Mapping
 
 | Trigger in `curvine-helm` | `Chart.version` | `Chart.appVersion` | Default `image.tag` |
 | --- | --- | --- | --- |
 | Push `v0.3.0` tag | `0.3.0` | `0.3.0` | `v0.3.0` |
-| Push to `main` | `<base>-dev` | `<base>-dev` | `v<base>-dev` |
+| Push to `main` | `<base>-dev` | `latest` | `latest` |
 
-For `main` branch test packages, the default image tag may not exist in the registry. Use
-`--set image.tag=latest` when installing a `-dev` chart against development images.
+`main` branch test packages use rolling `latest` images from the registry. The chart package
+version remains `<base>-dev` so it does not collide with versioned releases.
 
 ### Example: Versioned Release
 

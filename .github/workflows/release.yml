@@ -126,14 +126,16 @@ jobs:
           echo "Base version: $BASE_VERSION"
           if [ "${{ steps.tag.outputs.is_branch_build }}" == "true" ]; then
             FINAL_VERSION="${BASE_VERSION}-dev"
+            APP_VERSION="latest"
           else
             FINAL_VERSION="${{ steps.tag.outputs.version }}"
+            APP_VERSION="${FINAL_VERSION}"
           fi
 
           sed -i "s/^version:.*/version: $FINAL_VERSION/" ${{ matrix.chart.path }}/Chart.yaml
-          sed -i "s/^appVersion:.*/appVersion: \"$FINAL_VERSION\"/" ${{ matrix.chart.path }}/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"$APP_VERSION\"/" ${{ matrix.chart.path }}/Chart.yaml
           echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
-          echo "Updated Chart.yaml version and appVersion to: $FINAL_VERSION"
+          echo "Updated Chart.yaml version to: $FINAL_VERSION, appVersion to: $APP_VERSION"
           cat ${{ matrix.chart.path }}/Chart.yaml
 
       - name: Validate Helm chart

@@ -18,6 +18,21 @@ This repository publishes chart packages from source directories and serves the 
 
 ## Triggers
 
+### `repository_dispatch` from Curvine
+
+- Event type: `curvine-release`
+- Workflow: `on-curvine-release.yml`
+- Triggered after `CurvineIO/curvine` publishes runtime and CSI images for a `v*` tag
+- Creates the matching `v*` git tag on `main` if it does not already exist
+- The tag push then runs the standard chart packaging workflow
+
+Manual retry:
+
+```bash
+# In curvine-helm Actions -> "On Curvine Release" -> Run workflow
+# tag: v0.3.0
+```
+
 ### Push to `main`
 
 - Packages both charts with a fixed `-dev` chart version
@@ -72,10 +87,29 @@ helm upgrade --install curvine-csi curvineio/curvine-csi
 
 ## Release Checklist
 
+### Automated path (recommended)
+
+1. Push a `v*` tag in `CurvineIO/curvine`.
+2. Wait for Curvine image builds and the helm dispatch workflow to complete.
+3. Confirm `curvine-helm` created the matching `v*` tag and GitHub Release.
+4. Manually run the release workflow with `ref=<v-tag>` and `sync_to_doc=true` when you are ready to publish the updated public index.
+
+### Manual path
+
 1. Update chart source and documentation.
 2. Push to `main` if you need a test package in the `latest` release.
 3. Create and push a `v*` tag for a versioned release.
 4. Manually run the workflow with `ref=<v-tag>` and `sync_to_doc=true` when you are ready to publish the updated index.
+
+## Repository Secrets
+
+`CurvineIO/curvine` must define:
+
+| Secret | Used by | Purpose |
+| --- | --- | --- |
+| `CURVINE_HELM_DISPATCH_TOKEN` | `trigger-helm-release.yml` | PAT with read/write access to `CurvineIO/curvine-helm` so it can send `repository_dispatch` events |
+
+Create a fine-grained PAT or classic PAT with `contents: write` on `curvine-helm`, then add it to the Curvine repository secrets.
 
 ## Notes
 

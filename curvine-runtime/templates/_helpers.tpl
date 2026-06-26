@@ -190,10 +190,24 @@ imagePullSecrets:
 {{- end }}
 
 {{/*
+Image tag defaults to v{Chart.AppVersion} when values.image.tag is empty.
+Curvine container images use a v-prefixed tag (e.g. v0.3.0); Chart.AppVersion omits the prefix.
+*/}}
+{{- define "curvine.imageTag" -}}
+{{- if .Values.image.tag -}}
+{{- .Values.image.tag -}}
+{{- else if hasPrefix "v" .Chart.AppVersion -}}
+{{- .Chart.AppVersion -}}
+{{- else -}}
+{{- printf "v%s" .Chart.AppVersion -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Full image name
 */}}
 {{- define "curvine.image" -}}
-{{- printf "%s:%s" .Values.image.repository .Values.image.tag }}
+{{- printf "%s:%s" .Values.image.repository (include "curvine.imageTag" .) }}
 {{- end }}
 
 {{/*

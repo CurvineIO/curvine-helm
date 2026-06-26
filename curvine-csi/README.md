@@ -52,7 +52,7 @@ helm upgrade --install curvine-csi ./curvine-csi \
 | Key | Description | Default |
 | --- | --- | --- |
 | `image.repository` | CSI image repository | `ghcr.io/curvineio/curvine-csi` |
-| `image.tag` | CSI image tag | `latest` |
+| `image.tag` | CSI image tag (empty uses `v{Chart.AppVersion}`) | `""` |
 | `csiDriver.name` | CSI driver name | `curvine` |
 | `controller.replicas` | Controller replica count | `1` |
 | `node.mountMode` | FUSE mount strategy | `standalone` |

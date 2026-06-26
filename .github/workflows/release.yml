@@ -131,8 +131,9 @@ jobs:
           fi
 
           sed -i "s/^version:.*/version: $FINAL_VERSION/" ${{ matrix.chart.path }}/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"$FINAL_VERSION\"/" ${{ matrix.chart.path }}/Chart.yaml
           echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
-          echo "Updated Chart.yaml version to: $FINAL_VERSION"
+          echo "Updated Chart.yaml version and appVersion to: $FINAL_VERSION"
           cat ${{ matrix.chart.path }}/Chart.yaml
 
       - name: Validate Helm chart

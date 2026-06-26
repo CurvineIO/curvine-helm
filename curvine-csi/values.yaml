@@ -4,7 +4,8 @@
 # Image settings
 image:
   repository: ghcr.io/curvineio/curvine-csi
-  tag: v0.2.0-alpha
+  # Leave empty to use v{Chart.AppVersion} (matches curvine release image tags)
+  tag: ""
   pullPolicy: Always
 
 # CSI Driver settings

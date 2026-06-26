@@ -12,7 +12,8 @@ cluster:
 # Image configuration
 image:
   repository: ghcr.io/curvineio/curvine
-  tag: "v0.2.0-alpha"
+  # Leave empty to use v{Chart.AppVersion} (matches curvine release image tags)
+  tag: ""
   pullPolicy: IfNotPresent
   pullSecrets: []
 

@@ -48,12 +48,14 @@ Behavior:
 
 ## Versioning Rules
 
-| Trigger | Chart Version |
-| --- | --- |
-| `main` push | `<base>-dev` |
-| `v*` tag push | `<tag without v>` |
-| Manual branch build | `<base>-dev` |
-| Manual tag build | `<tag without v>` |
+| Trigger | Chart Version | App Version | Default Image Tag |
+| --- | --- | --- | --- |
+| `main` push | `<base>-dev` | `<base>-dev` | `v<base>-dev` (override with `--set image.tag=latest` for dev images) |
+| `v*` tag push | `<tag without v>` | `<tag without v>` | `v<tag without v>` |
+| Manual branch build | `<base>-dev` | `<base>-dev` | `v<base>-dev` |
+| Manual tag build | `<tag without v>` | `<tag without v>` | `v<tag without v>` |
+
+`values.yaml` leaves `image.tag` empty by default; templates resolve it to `v{Chart.AppVersion}`.
 
 ## Operator Installation
 

@@ -122,10 +122,8 @@ jobs:
           CURRENT_VERSION=$(grep '^version:' ${{ matrix.chart.path }}/Chart.yaml | awk '{print $2}' | tr -d '"')
           echo "Current Chart version for ${{ matrix.chart.name }}: $CURRENT_VERSION"
 
-          BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/-.*//')
-          echo "Base version: $BASE_VERSION"
           if [ "${{ steps.tag.outputs.is_branch_build }}" == "true" ]; then
-            FINAL_VERSION="${BASE_VERSION}-dev"
+            FINAL_VERSION="0.0.0-dev"
             APP_VERSION="latest"
           else
             FINAL_VERSION="${{ steps.tag.outputs.version }}"
@@ -135,6 +133,7 @@ jobs:
           sed -i "s/^version:.*/version: $FINAL_VERSION/" ${{ matrix.chart.path }}/Chart.yaml
           sed -i "s/^appVersion:.*/appVersion: \"$APP_VERSION\"/" ${{ matrix.chart.path }}/Chart.yaml
           echo "version=$FINAL_VERSION" >> $GITHUB_OUTPUT
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
           echo "Updated Chart.yaml version to: $FINAL_VERSION, appVersion to: $APP_VERSION"
           cat ${{ matrix.chart.path }}/Chart.yaml
 
@@ -186,8 +185,9 @@ jobs:
         run: |
           echo "## Build Summary - ${{ matrix.chart.name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Chart**: ${{ matrix.chart.name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag/Version**: ${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release Tag**: ${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Chart Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **App Version**: ${{ steps.version.outputs.app_version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Chart Package**: ${{ steps.package.outputs.chart_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Digest (SHA256)**: ${{ steps.checksum.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
 
@@ -378,8 +378,8 @@ jobs:
             ```
             
             ### Files
-            - curvine-csi chart package (version: *-dev)
-            - curvine chart package (version: *-dev)
+            - curvine-csi chart package (version: 0.0.0-dev)
+            - curvine chart package (version: 0.0.0-dev)
             - checksums.txt (SHA256 checksums for both charts)
             
             > **Note**: This release is automatically overwritten. Do not use in production!

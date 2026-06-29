@@ -20,7 +20,7 @@ This repository publishes chart packages from source directories and serves the 
 
 ### Push to `main`
 
-- Packages both charts with a fixed `-dev` chart version
+- Packages both charts with a fixed `0.0.0-dev` chart version
 - Updates the GitHub Release named `latest`
 - Does not sync `index.yaml` to `curvine-doc`
 
@@ -42,7 +42,7 @@ Inputs:
 Behavior:
 
 - A tag ref such as `v0.2.0` packages charts with version `0.2.0`
-- A branch ref packages charts as the current base version plus `-dev` and updates the `latest` test release
+- A branch ref packages charts as `0.0.0-dev` and updates the `latest` test release
 - `sync_to_doc=true` is only valid when `ref` is a `v*` tag; the workflow fails fast for branch refs
 - When `sync_to_doc` is enabled for a tag build, the workflow rebuilds `index.yaml` with release URLs and pushes it to `curvine-doc`
 
@@ -50,9 +50,9 @@ Behavior:
 
 | Trigger | Chart Version | App Version | Default Image Tag |
 | --- | --- | --- | --- |
-| `main` push | `<base>-dev` | `latest` | `latest` |
+| `main` push | `0.0.0-dev` | `latest` | `latest` |
 | `v*` tag push | `<tag without v>` | `<tag without v>` | `v<tag without v>` |
-| Manual branch build | `<base>-dev` | `latest` | `latest` |
+| Manual branch build | `0.0.0-dev` | `latest` | `latest` |
 | Manual tag build | `<tag without v>` | `<tag without v>` | `v<tag without v>` |
 
 `values.yaml` leaves `image.tag` empty by default. Templates resolve it to `latest` when

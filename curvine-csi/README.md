@@ -20,7 +20,7 @@ from `Chart.appVersion`:
 | `latest` | `latest` |
 
 On versioned releases, `Chart.version` and `Chart.appVersion` match. On `main` branch test
-packages, `Chart.version` is `<base>-dev` while `appVersion` is `latest`.
+packages, `Chart.version` is `0.0.0-dev` while `appVersion` is `latest`.
 
 See the repository [README](../README.md#versioning-model) for the full version mapping and
 release workflow.

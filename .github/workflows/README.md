@@ -14,6 +14,7 @@ This repository publishes chart packages from source directories and serves the 
 - Chart source code lives in this repository.
 - Packaged charts are uploaded to GitHub Releases.
 - The public Helm index lives at `https://curvineio.github.io/curvine-doc/helm-charts/index.yaml`.
+- Sync reads the existing index from the `curvine-doc` git repository and merges new chart versions into it.
 - The workflow does not commit packaged charts or `index.yaml` back into this repository.
 
 ## Triggers

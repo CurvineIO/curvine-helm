@@ -311,20 +311,20 @@ jobs:
             exit 0
           fi
 
-          mapfile -t asset_ids < <(
+          mapfile -t asset_names < <(
             gh release view latest --repo "${GITHUB_REPOSITORY}" \
               --json assets \
-              --jq '.assets[] | select(.name | test("\\.tgz$|^checksums\\.txt$")) | .id'
+              --jq '.assets[] | select(.name | test("\\.tgz$|^checksums\\.txt$")) | .name'
           )
 
-          if [ "${#asset_ids[@]}" -eq 0 ]; then
+          if [ "${#asset_names[@]}" -eq 0 ]; then
             echo "No chart assets to delete on latest release."
             exit 0
           fi
 
-          for asset_id in "${asset_ids[@]}"; do
-            echo "Deleting release asset id: ${asset_id}"
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
+          for asset_name in "${asset_names[@]}"; do
+            echo "Deleting release asset: ${asset_name}"
+            gh release delete-asset latest "${asset_name}" --repo "${GITHUB_REPOSITORY}" -y
           done
 
       - name: Create/Update GitHub Release (v* tag)

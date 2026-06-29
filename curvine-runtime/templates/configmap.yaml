@@ -62,7 +62,7 @@ data:
     rpc_port = {{ .Values.master.journalPort }}
     journal_dir = "{{ $journalDir }}"
     snapshot_interval = {{ .Values.config.journal.snapshotInterval | quote }}
-    snapshot_entries = {{ .Values.config.journal.snapshotEntries }}
+    snapshot_entries = {{ include "curvine.tomlInt" .Values.config.journal.snapshotEntries }}
     {{- if .Values.configOverrides.journal }}
     {{- range $key, $value := .Values.configOverrides.journal }}
     {{ $key }} = {{ toJson $value }}

@@ -351,3 +351,11 @@ Validate master replicas - ensure they cannot be changed on upgrade
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/*
+Render a TOML integer without scientific notation.
+YAML large integers are parsed as float64 in Helm; printf "%d" after int avoids 1e+06.
+*/}}
+{{- define "curvine.tomlInt" -}}
+{{- printf "%d" (int .) -}}
+{{- end -}}

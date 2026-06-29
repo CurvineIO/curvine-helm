@@ -141,13 +141,25 @@ jobs:
       - name: Validate Helm chart
         run: |
           cd ${{ matrix.chart.path }}
+          if [ "${{ matrix.chart.name }}" = "curvine" ]; then
+            helm repo add openkruise https://openkruise.github.io/charts/
+            helm dependency build .
+          fi
           helm lint .
+          if [ "${{ matrix.chart.name }}" = "curvine" ]; then
+            helm template test . | grep 'snapshot_entries = 1000000'
+            helm template test . | grep 'snapshot_entries' | grep -qv 'e+'
+          fi
 
       - name: Package Helm chart
         id: package
         run: |
           mkdir -p dist
           cd ${{ matrix.chart.path }}
+          if [ "${{ matrix.chart.name }}" = "curvine" ]; then
+            helm repo add openkruise https://openkruise.github.io/charts/
+            helm dependency build .
+          fi
           helm package . --destination ../dist
           cd ../dist
           CHART_FILE=$(ls *.tgz)

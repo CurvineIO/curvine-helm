@@ -16,3 +16,8 @@ maintainers:
   - name: Curvine Team
     email: curvine@example.com
 icon: https://curvineio.github.io/img/curvine_logo.png
+dependencies:
+  - name: kruise
+    version: "1.9.0"
+    repository: "https://openkruise.github.io/charts/"
+    condition: openKruise.enabled

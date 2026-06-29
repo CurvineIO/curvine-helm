@@ -14,7 +14,7 @@ on:
         type: string
         default: 'main'
       sync_to_doc:
-        description: 'Sync index.yaml to curvine-doc repository (v* tags only)'
+        description: 'Sync index.yaml to curvine-doc repository after build'
         required: true
         type: boolean
         default: false
@@ -38,8 +38,8 @@ jobs:
             REF="main"
           fi
 
-          if [[ "${{ inputs.sync_to_doc }}" == "true" && "$REF" != v* ]]; then
-            echo "::error title=Invalid sync target::sync_to_doc=true is only supported for version tags (v*). Received ref: $REF"
+          if [[ "$REF" == "latest" ]]; then
+            echo "::error title=Invalid ref::ref=latest is an outdated git tag. Use ref=main to build and sync the testing release."
             exit 1
           fi
 
@@ -421,8 +421,15 @@ jobs:
           fi
 
           SOURCE_SHA=$(git -C source-repo rev-parse HEAD)
-          TAG="$SOURCE_REF"
-          VERSION="${TAG#v}"
+
+          # Branch builds publish to the "latest" testing release, not a tag named after the branch.
+          if [[ "$SOURCE_REF" == v* ]]; then
+            TAG="$SOURCE_REF"
+            VERSION="${TAG#v}"
+          else
+            TAG="latest"
+            VERSION="latest"
+          fi
 
           echo "source_ref=$SOURCE_REF" >> "$GITHUB_OUTPUT"
           echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
@@ -430,6 +437,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Sync source ref: $SOURCE_REF"
           echo "Sync source SHA: $SOURCE_SHA"
+          echo "Release tag for download: $TAG"
 
       - name: Checkout curvine-doc repository
         uses: actions/checkout@v4

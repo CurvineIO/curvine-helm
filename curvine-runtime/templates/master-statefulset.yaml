@@ -1,7 +1,5 @@
 {{- include "curvine.validateMasterReplicasOnUpgrade" . }}
-{{- $masterUsesHostPath := eq (include "curvine.masterUsesHostPath" .) "true" }}
-{{- $masterPersistentTopologyEnabled := and $masterUsesHostPath .Values.master.persistentTopology.enabled }}
-{{- $useKruiseStatefulSet := or .Values.openKruise.enabled $masterPersistentTopologyEnabled }}
+{{- $useKruiseStatefulSet := .Values.openKruise.enabled }}
 apiVersion: {{ ternary "apps.kruise.io/v1beta1" "apps/v1" $useKruiseStatefulSet }}
 kind: StatefulSet
 metadata:
@@ -9,14 +7,14 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "curvine.masterLabels" . | nindent 4 }}
-  {{- $generatePersistentPodState := or (and .Values.openKruise.enabled .Values.openKruise.persistentPodState.autoGenerate) $masterPersistentTopologyEnabled }}
+  {{- $generatePersistentPodState := and .Values.openKruise.enabled .Values.openKruise.persistentPodState.autoGenerate }}
   {{- if $generatePersistentPodState }}
   annotations:
     kruise.io/auto-generate-persistent-pod-state: "true"
-    {{- if and (not $masterPersistentTopologyEnabled) .Values.openKruise.persistentPodState.preferredPersistentTopology }}
+    {{- if .Values.openKruise.persistentPodState.preferredPersistentTopology }}
     kruise.io/preferred-persistent-topology: {{ .Values.openKruise.persistentPodState.preferredPersistentTopology | quote }}
     {{- end }}
-    {{- if $masterPersistentTopologyEnabled }}
+    {{- if and .Values.master.persistentTopology.enabled .Values.master.persistentTopology.key }}
     kruise.io/required-persistent-topology: {{ .Values.master.persistentTopology.key | quote }}
     {{- else if .Values.openKruise.persistentPodState.requiredPersistentTopology }}
     kruise.io/required-persistent-topology: {{ .Values.openKruise.persistentPodState.requiredPersistentTopology | quote }}

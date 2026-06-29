@@ -21,6 +21,7 @@ This repository publishes chart packages from source directories and serves the 
 ### Push to `main`
 
 - Packages both charts with a fixed `0.0.0-dev` chart version
+- Deletes existing `*.tgz` and `checksums.txt` assets from the `latest` release before upload
 - Updates the GitHub Release named `latest`
 - Syncs `index.yaml` to `curvine-doc` automatically
 

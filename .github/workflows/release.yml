@@ -492,24 +492,24 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Download old index.yaml from curvine-doc
+      - name: Prepare existing index.yaml for merge
         run: |
           mkdir -p temp-charts
-          cd temp-charts
-          
-          # Try to download existing index.yaml
-          echo "Downloading existing index.yaml from curvine-doc..."
-          curl -fsSL https://curvineio.github.io/curvine-doc/helm-charts/index.yaml -o old-index.yaml || {
-            echo "No existing index.yaml found, will create new one"
-            touch old-index.yaml
-          }
-          
-          if [ -s old-index.yaml ]; then
-            echo "Existing index.yaml found:"
-            head -20 old-index.yaml
-          else
-            echo "Creating new index.yaml"
+          INDEX_PATH="curvine-doc/static/helm-charts/index.yaml"
+
+          if [ ! -f "$INDEX_PATH" ]; then
+            echo "::error title=Missing index.yaml::Expected $INDEX_PATH in curvine-doc. Bootstrap the public Helm index in curvine-doc before syncing releases."
+            exit 1
           fi
+
+          if [ ! -s "$INDEX_PATH" ]; then
+            echo "::error title=Empty index.yaml::$INDEX_PATH is empty. Refusing to regenerate the public index without merge input."
+            exit 1
+          fi
+
+          cp "$INDEX_PATH" temp-charts/old-index.yaml
+          echo "Loaded existing index.yaml from curvine-doc git repository:"
+          head -20 temp-charts/old-index.yaml
 
       - name: Download current release charts
         run: |
@@ -534,19 +534,10 @@ jobs:
           
           RELEASE_TAG="${{ steps.source.outputs.tag }}"
           
-          # Check if old-index.yaml exists and is not empty
-          if [ -s old-index.yaml ]; then
-            echo "Merging with existing index.yaml..."
-            # Generate index.yaml with Release URLs and merge with old index
-            helm repo index . \
-              --url "https://github.com/CurvineIO/curvine-helm/releases/download/${RELEASE_TAG}" \
-              --merge old-index.yaml
-          else
-            echo "Creating new index.yaml (no existing index found)..."
-            # Generate new index.yaml without merging
-            helm repo index . \
-              --url "https://github.com/CurvineIO/curvine-helm/releases/download/${RELEASE_TAG}"
-          fi
+          echo "Merging new charts into existing index.yaml..."
+          helm repo index . \
+            --url "https://github.com/CurvineIO/curvine-helm/releases/download/${RELEASE_TAG}" \
+            --merge old-index.yaml
           
           echo "Generated index.yaml (first 100 lines):"
           head -100 index.yaml

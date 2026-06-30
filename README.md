@@ -115,14 +115,17 @@ Rules:
 
 1. **Curvine release drives images.** Pushing `v0.3.0` in `CurvineIO/curvine` builds and publishes
    `ghcr.io/curvineio/curvine:v0.3.0` and `ghcr.io/curvineio/curvine-csi:v0.3.0`.
-2. **Helm release drives chart metadata.** Pushing `v0.3.0` in this repository packages charts with
-   `version: 0.3.0` and `appVersion: "0.3.0"`.
-3. **Image tag defaults from `appVersion`.** `values.yaml` leaves `image.tag` empty. Templates
+2. **Helm release follows automatically.** After Curvine images are published, `CurvineIO/curvine`
+   dispatches a `curvine-release` event to this repository. The `on-curvine-release` workflow
+   creates the matching `v*` git tag on `main`, which triggers chart packaging.
+3. **Helm release drives chart metadata.** The release workflow packages charts with
+   `version: 0.3.0` and `appVersion: "0.3.0"` from the git tag.
+4. **Image tag defaults from `appVersion`.** `values.yaml` leaves `image.tag` empty. Templates
    resolve it to `latest` when `Chart.AppVersion` is `latest`, otherwise `v{Chart.AppVersion}`
    (for example `0.3.0` becomes `v0.3.0`).
-4. **`Chart.version` and `Chart.appVersion` usually match** for versioned releases. For `main`
+5. **`Chart.version` and `Chart.appVersion` usually match** for versioned releases. For `main`
    branch test packages, `Chart.version` is fixed at `0.0.0-dev` while `appVersion` is `latest`.
-5. **Override when needed.** Use `--set image.tag=...` for custom images, hotfixes, or pinned builds.
+6. **Override when needed.** Use `--set image.tag=...` for custom images, hotfixes, or pinned builds.
 
 ### Release Mapping
 
@@ -142,12 +145,13 @@ version is fixed at `0.0.0-dev` so it does not collide with versioned releases.
 #    images: ghcr.io/curvineio/curvine:v0.3.0
 #            ghcr.io/curvineio/curvine-csi:v0.3.0
 
-# 2. This repository publishes matching Helm charts
-git tag v0.3.0
-git push origin v0.3.0
-# chart package version: 0.3.0
-# chart appVersion: 0.3.0
-# rendered image: ghcr.io/curvineio/curvine:v0.3.0
+# 2. Curvine dispatches a helm release for the same tag
+#    curvine-helm receives repository_dispatch event: curvine-release
+#    on-curvine-release workflow creates tag v0.3.0 on main
+#    release workflow packages charts:
+#    chart package version: 0.3.0
+#    chart appVersion: 0.3.0
+#    rendered image: ghcr.io/curvineio/curvine:v0.3.0
 
 # 3. Install from the public Helm repository
 helm repo add curvineio https://curvineio.github.io/curvine-doc/helm-charts

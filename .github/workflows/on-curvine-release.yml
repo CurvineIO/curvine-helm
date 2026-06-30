@@ -1,0 +1,103 @@
+name: On Curvine Release
+
+on:
+  repository_dispatch:
+    types: [curvine-release]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to create (e.g. v0.3.0)'
+        required: true
+        type: string
+      source_sha:
+        description: 'Source curvine commit SHA (optional, for audit trail)'
+        required: false
+        type: string
+      source_repository:
+        description: 'Source repository (optional)'
+        required: false
+        type: string
+        default: CurvineIO/curvine
+
+permissions:
+  contents: write
+
+concurrency:
+  group: on-curvine-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.client_payload.tag }}
+  cancel-in-progress: false
+
+jobs:
+  create-release-tag:
+    name: Create helm release tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release metadata
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            TAG='${{ github.event.client_payload.tag }}'
+            SOURCE_SHA='${{ github.event.client_payload.sha }}'
+            SOURCE_REPO='${{ github.event.client_payload.repository }}'
+          else
+            TAG='${{ inputs.tag }}'
+            SOURCE_SHA='${{ inputs.source_sha }}'
+            SOURCE_REPO='${{ inputs.source_repository }}'
+          fi
+
+          if [[ ! "$TAG" =~ ^v ]]; then
+            echo "::error::Release tag must start with v, got: $TAG"
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "source_repo=$SOURCE_REPO" >> "$GITHUB_OUTPUT"
+          echo "Helm release tag: $TAG"
+          echo "Source: ${SOURCE_REPO}@${SOURCE_SHA}"
+
+      - name: Check whether tag already exists
+        id: check
+        run: |
+          if git rev-parse "refs/tags/${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Tag ${{ steps.meta.outputs.tag }} already exists; skipping tag creation"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and push release tag
+        if: steps.check.outputs.skip != 'true'
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          SOURCE_REPO: ${{ steps.meta.outputs.source_repo }}
+          SOURCE_SHA: ${{ steps.meta.outputs.source_sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$TAG" -m "Release ${TAG}
+
+          Triggered by Curvine release pipeline.
+          Source repository: ${SOURCE_REPO}
+          Source commit: ${SOURCE_SHA}"
+
+          git push origin "$TAG"
+
+      - name: Release summary
+        run: |
+          {
+            echo "## Curvine Helm Release Trigger"
+            echo "- **Tag**: ${{ steps.meta.outputs.tag }}"
+            echo "- **Chart version**: ${{ steps.meta.outputs.version }}"
+            echo "- **Source repository**: ${{ steps.meta.outputs.source_repo }}"
+            echo "- **Source commit**: ${{ steps.meta.outputs.source_sha }}"
+            echo "- **Tag action**: ${{ steps.check.outputs.skip == 'true' && 'skipped (already exists)' || 'created and pushed' }}"
+            echo ""
+            echo "The existing release workflow packages charts when a \`v*\` tag is pushed."
+          } >> "$GITHUB_STEP_SUMMARY"

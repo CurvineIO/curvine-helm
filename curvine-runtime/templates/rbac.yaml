@@ -19,9 +19,11 @@ rules:
   - apiGroups: ["apps"]
     resources: ["statefulsets"]
     verbs: ["get", "list", "watch"]
+  {{- if .Values.openKruise.enabled }}
   - apiGroups: ["apps.kruise.io"]
     resources: ["statefulsets"]
     verbs: ["get", "list", "watch"]
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

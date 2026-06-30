@@ -19,7 +19,7 @@ image:
 
 # OpenKruise advanced StatefulSet configuration
 openKruise:
-  # Enable OpenKruise Advanced StatefulSet for master/worker
+  # Enable OpenKruise Advanced StatefulSet for master/worker and install the kruise subchart
   enabled: false
   # In-place image update policy: InPlaceOnly | InPlaceIfPossible | ReCreate
   podUpdatePolicy: "InPlaceOnly"
@@ -30,6 +30,12 @@ openKruise:
     preferredPersistentTopology: "kubernetes.io/hostname"
     # Optional strict topology keys, e.g. failure-domain.beta.kubernetes.io/zone
     requiredPersistentTopology: ""
+
+# Kruise subchart values (only installed when openKruise.enabled=true)
+kruise:
+  installation:
+    namespace: kruise-system
+    createNamespace: true
 
 # Master node configuration
 master:

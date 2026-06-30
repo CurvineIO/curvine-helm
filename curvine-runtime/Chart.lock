@@ -1,0 +1,6 @@
+dependencies:
+- name: kruise
+  repository: https://openkruise.github.io/charts/
+  version: 1.9.0
+digest: sha256:6369338e507af7f92e321aa95a585acc8584901e0dfe24f7516c72aca53d1690
+generated: "2026-06-29T16:15:45.601688807+08:00"

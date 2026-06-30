@@ -355,7 +355,14 @@
           "type": "object"
         },
         "journal": {
-          "type": "object"
+          "type": "object",
+          "properties": {
+            "snapshotEntries": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": true
         },
         "worker": {
           "type": "object"

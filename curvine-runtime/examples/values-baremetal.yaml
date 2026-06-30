@@ -8,6 +8,10 @@
 cluster:
   id: "curvine-baremetal"
 
+# Pin master pods to original nodes across restarts (requires Kruise subchart).
+openKruise:
+  enabled: true
+
 master:
   replicas: 3
 

@@ -22,7 +22,7 @@ from `Chart.appVersion`:
 | `latest` | `latest` |
 
 On versioned releases, `Chart.version` and `Chart.appVersion` match. On `main` branch test
-packages, `Chart.version` is `<base>-dev` while `appVersion` is `latest`.
+packages, `Chart.version` is `0.0.0-dev` while `appVersion` is `latest`.
 
 See the repository [README](../README.md#versioning-model) for the full version mapping and
 release workflow.
@@ -35,20 +35,24 @@ Confirm these prerequisites first:
   - a default `StorageClass`
   - explicit `storageClass` values in your values file
   - `hostPath` storage on bare metal
-- OpenKruise, if `openKruise.enabled=true`
 - Enough cluster capacity for the requested CPU and memory
 - If you use the production or bare-metal examples:
   - node labels already exist
   - required taints are tolerated
   - privileged Pods and `hostNetwork` are allowed when applicable
 
-### Install OpenKruise
+### OpenKruise (optional)
 
-```bash
-helm repo add openkruise https://openkruise.github.io/charts/
-helm repo update
-helm upgrade --install kruise openkruise/kruise --version 1.9.0
-```
+By default `openKruise.enabled=false`. The chart uses standard `apps/v1` StatefulSets and does not install OpenKruise.
+
+Set `openKruise.enabled=true` when you need:
+
+- Advanced StatefulSet features (in-place image updates)
+- PersistentPodState topology pinning for master pods
+
+Enabling OpenKruise installs the `kruise` subchart (v1.9.0) into `kruise-system` as part of the same `helm upgrade --install` command. Override subchart settings under the top-level `kruise:` values key.
+
+If OpenKruise is already installed cluster-wide, set `openKruise.enabled=true` for Curvine Kruise API usage and consider `kruise.crds.managed=false` to avoid reinstalling CRDs.
 
 The chart defaults are intentionally conservative so a first deployment is less likely to end in `Pending`.
 The chart also includes `values.schema.json` so invalid values can be rejected before rendering.
@@ -128,9 +132,12 @@ helm upgrade --install curvine ./curvine-runtime \
 
 When Master metadata or journal storage uses `hostPath`, the chart treats the
 data as node-local. For multi-Master deployments, it adds required Pod
-anti-affinity and OpenKruise required persistent topology. This keeps each
-Master ordinal on its original node and prevents two Master pods from sharing
-the same node-local RocksDB paths.
+anti-affinity so each Master ordinal stays on a distinct node and two Master
+pods cannot share the same node-local RocksDB paths.
+
+To pin master pods to their original nodes across restarts, set
+`openKruise.enabled=true` and configure `master.persistentTopology` (see the
+bare-metal example).
 
 Master startup is intentionally protected by `master.startupProbe`. A Master
 does not open the RPC port until Raft snapshot restore and metadata tree rebuild
@@ -174,6 +181,18 @@ Use this flow for:
 - config changes
 
 Do not change `master.replicas` during an in-place upgrade.
+
+### Migrating from implicit OpenKruise usage
+
+Older chart versions rendered master StatefulSets as `apps.kruise.io/v1beta1` when
+using `hostPath` storage with `master.persistentTopology.enabled=true`, even if
+`openKruise.enabled=false`. Current versions only use the Kruise API when
+`openKruise.enabled=true`.
+
+If you upgraded from that behavior:
+
+- Set `openKruise.enabled=true` before upgrading to keep Advanced StatefulSet semantics, or
+- Accept that the master StatefulSet apiVersion may change to `apps/v1` and plan accordingly
 
 ### Roll Back
 

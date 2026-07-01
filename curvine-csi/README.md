@@ -61,7 +61,7 @@ helm upgrade --install curvine-csi ./curvine-csi \
 - You can override them with:
   - `serviceAccount.controller.name`
   - `serviceAccount.node.name`
-- Standalone mount mode is enabled by default through `node.mountMode=standalone`.
+- Embedded mount mode is the default through `node.mountMode=embedded`.
 
 ## Core Values
 
@@ -71,7 +71,7 @@ helm upgrade --install curvine-csi ./curvine-csi \
 | `image.tag` | CSI image tag (empty uses `latest` when `Chart.AppVersion` is `latest`, otherwise `v{Chart.AppVersion}`) | `""` |
 | `csiDriver.name` | CSI driver name | `curvine` |
 | `controller.replicas` | Controller replica count | `1` |
-| `node.mountMode` | FUSE mount strategy | `standalone` |
+| `node.mountMode` | FUSE mount strategy | `embedded` |
 | `node.priorityClassName` | Node DaemonSet priority class | `system-node-critical` |
 | `rbac.create` | Create service accounts, cluster roles, and bindings | `true` |
 

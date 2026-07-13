@@ -133,6 +133,10 @@ spec:
               mountPath: {{ include "curvine.configFile" . }}
               subPath: curvine-cluster.toml
               readOnly: true
+            - name: env
+              mountPath: {{ include "curvine.envFile" . }}
+              subPath: curvine-env.sh
+              readOnly: true
             - name: meta
               mountPath: {{ include "curvine.absPath" (dict "path" .Values.master.storage.meta.mountPath) }}
             - name: journal
@@ -144,6 +148,9 @@ spec:
             {{- end }}
       volumes:
         - name: config
+          configMap:
+            name: {{ include "curvine.fullname" . }}-config
+        - name: env
           configMap:
             name: {{ include "curvine.fullname" . }}-config
         - name: logs

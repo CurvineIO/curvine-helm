@@ -227,6 +227,13 @@ Curvine config file path inside container
 {{- end }}
 
 {{/*
+Curvine env script path inside container
+*/}}
+{{- define "curvine.envFile" -}}
+/app/curvine/conf/curvine-env.sh
+{{- end }}
+
+{{/*
 Application home directory
 */}}
 {{- define "curvine.appHome" -}}

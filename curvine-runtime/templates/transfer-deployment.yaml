@@ -1,0 +1,83 @@
+{{- if .Values.transfer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "curvine.transferServiceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "curvine.transferLabels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.transfer.replicas }}
+  selector:
+    matchLabels:
+      {{- include "curvine.transferSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "curvine.transferSelectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "curvine.serviceAccountName" . }}
+      {{- include "curvine.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: transfer
+          image: {{ include "curvine.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /entrypoint.sh
+          args:
+            - transfer
+            - start
+          env:
+            - name: APP_HOME
+              value: {{ include "curvine.appHome" . | quote }}
+            - name: CURVINE_HOME
+              value: {{ include "curvine.home" . | quote }}
+            - name: CURVINE_CONF_FILE
+              value: {{ include "curvine.configFile" . | quote }}
+            - name: ORPC_BIND_HOSTNAME
+              value: "0.0.0.0"
+          ports:
+            - name: rpc
+              containerPort: {{ .Values.transfer.rpcPort }}
+              protocol: TCP
+            - name: web
+              containerPort: {{ .Values.transfer.webPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: web
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: web
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.transfer.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: {{ include "curvine.configFile" . }}
+              subPath: curvine-cluster.toml
+              readOnly: true
+            - name: logs
+              mountPath: {{ .Values.config.log.logDir }}
+            - name: transfer-data
+              mountPath: {{ include "curvine.home" . }}/data/transfer
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "curvine.fullname" . }}-config
+        - name: logs
+          emptyDir: {}
+        - name: transfer-data
+          emptyDir: {}
+{{- end }}

@@ -280,6 +280,35 @@
       },
       "additionalProperties": true
     },
+    "transfer": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "storeUrl": {
+          "type": "string"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rpcPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "webPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "resources": {
+          "$ref": "#/definitions/resources"
+        }
+      },
+      "additionalProperties": true
+    },
     "service": {
       "type": "object",
       "properties": {
@@ -402,6 +431,9 @@
           "type": "object"
         },
         "client": {
+          "type": "object"
+        },
+        "transfer": {
           "type": "object"
         },
         "log": {

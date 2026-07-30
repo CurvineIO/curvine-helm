@@ -1,0 +1,17 @@
+{{- if and .Values.transfer.enabled (not .Values.transfer.storeUrl) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "curvine.transferDataClaimName" . }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    {{- include "curvine.transferLabels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.transfer.storage.size }}
+{{- end }}

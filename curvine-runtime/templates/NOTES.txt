@@ -19,6 +19,11 @@ If a Pod is Pending:
 Access the master web UI:
   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "curvine.masterServiceName" . }} {{ .Values.master.webPort }}:{{ .Values.master.webPort }}
 
+{{- if .Values.transfer.enabled }}
+Access the Transfer health and metrics endpoint:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "curvine.transferServiceName" . }} {{ .Values.transfer.webPort }}:{{ .Values.transfer.webPort }}
+{{- end }}
+
 Upgrade in place:
   helm upgrade --install {{ .Release.Name }} <chart-ref> -n {{ .Release.Namespace }} -f values.yaml
 

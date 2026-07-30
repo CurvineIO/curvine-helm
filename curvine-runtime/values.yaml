@@ -231,6 +231,29 @@ worker:
   # Additional volume mounts
   extraVolumeMounts: []
 
+# Standalone Transfer service configuration.
+# Disabled by default to preserve existing Master and Worker deployments.
+transfer:
+  enabled: false
+  # SQLite is inferred when empty and stored on a chart-managed PVC.
+  # Use mysql://... before increasing replicas.
+  storeUrl: ""
+  replicas: 1
+  rpcPort: 9010
+  webPort: 9011
+
+  storage:
+    # Requested capacity for the default single-replica SQLite PVC.
+    size: "1Gi"
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
 # Service configuration
 service:
   master:
@@ -307,6 +330,9 @@ config:
 #       max_connections: "1000"
 #     client:
 #       block_size_str: "128MB"
+#     transfer:
+#       max_running_transfers: 128
+#       lease_timeout: "180s"
 #     log:
 #       level: "DEBUG"
 configOverrides:
@@ -314,4 +340,5 @@ configOverrides:
   journal: {}
   worker: {}
   client: {}
+  transfer: {}
   log: {}

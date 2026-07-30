@@ -1,4 +1,5 @@
 {{- include "curvine.validateMasterReplicas" . }}
+{{- include "curvine.validateTransfer" . }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -143,6 +144,24 @@ data:
     [[client.master_addrs]]
     hostname = "{{ include "curvine.masterFullname" $ }}-{{ $i }}.{{ include "curvine.masterServiceName" $ }}.{{ $.Release.Namespace }}.svc.{{ $.Values.global.clusterDomain }}"
     port = {{ $.Values.master.rpcPort }}
+    {{- end }}
+
+    [transfer]
+    enabled = {{ .Values.transfer.enabled }}
+    hostname = "{{ include "curvine.transferServiceName" . }}.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }}"
+    rpc_port = {{ .Values.transfer.rpcPort }}
+    web_port = {{ .Values.transfer.webPort }}
+    {{- with .Values.transfer.storeUrl }}
+    store_url = {{ . | quote }}
+    {{- end }}
+    {{- $managedTransferKeys := list "enabled" "hostname" "rpc_port" "web_port" "store_url" }}
+    {{- if .Values.configOverrides.transfer }}
+    {{- range $key, $value := .Values.configOverrides.transfer }}
+    {{- if has $key $managedTransferKeys }}
+    {{- fail (printf "configOverrides.transfer.%s is managed by the transfer section" $key) }}
+    {{- end }}
+    {{ $key }} = {{ toJson $value }}
+    {{- end }}
     {{- end }}
 
     [log]

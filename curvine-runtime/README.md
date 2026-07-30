@@ -147,6 +147,83 @@ can become ready.
 
 Do not use the production or bare-metal examples unchanged on a generic cluster. Edit storage classes, labels, and paths first.
 
+## Transfer Service
+
+Set `transfer.enabled=true` to deploy the standalone Transfer service. The chart
+creates an internal `ClusterIP` service and writes its Kubernetes DNS name into
+`[transfer].hostname`; Curvine then infers the client and Worker RPC endpoint.
+No `transfer.endpoints` value is required.
+
+```yaml
+transfer:
+  enabled: true
+  storeUrl: ""
+  replicas: 1
+  storage:
+    size: "1Gi"
+  rpcPort: 9010
+  webPort: 9011
+```
+
+An empty `storeUrl` keeps Curvine's default single-instance SQLite store at
+`/app/curvine/data/transfer/transfer.db`. The chart creates a `ReadWriteOnce`
+PVC and mounts it at that directory. It omits `storageClassName`, so Kubernetes
+uses the cluster default StorageClass. A cluster without a default StorageClass
+leaves the PVC Pending instead of silently using temporary storage. Multiple
+Transfer replicas require a shared MySQL store and the chart rejects other
+configurations:
+
+The SQLite Deployment uses `Recreate` to detach its `ReadWriteOnce` volume
+before a replacement Pod starts. Its PVC is retained by `helm uninstall`; delete
+it explicitly only when discarding the Transfer metadata.
+
+```yaml
+transfer:
+  enabled: true
+  storeUrl: "mysql://<user>:<password>@mysql.example:3306/curvine_transfer"
+  replicas: 2
+```
+
+`transfer.enabled`/`storeUrl`/`replicas`/`rpcPort`/`webPort` are chart-managed:
+the generated Service, Deployment and `[transfer]` configuration always use the
+same values. The hostname is always the generated Kubernetes Service DNS. Do
+not set these keys under `configOverrides.transfer`.
+
+All other supported `[transfer]` settings use the existing pass-through map:
+
+```yaml
+configOverrides:
+  transfer:
+    max_running_transfers: 128
+    lease_timeout: "180s"
+    terminal_retention: "336h"
+    cv_metadata_reader: "replica"
+```
+
+| `[transfer]` parameter | Helm setting | Default and behavior |
+| --- | --- | --- |
+| `enabled` | `transfer.enabled` | `false`; creates no Transfer workload until enabled. |
+| `store_url` | `transfer.storeUrl` | Empty infers `sqlite://data/transfer/transfer.db`. |
+| SQLite PVC capacity | `transfer.storage.size` | `1Gi`; created only when `storeUrl` is empty and uses the default StorageClass. |
+| `hostname` | Generated | The internal Transfer Service DNS. |
+| `rpc_port` | `transfer.rpcPort` | `9010`. |
+| `web_port` | `transfer.webPort` | `9011`. |
+| `instance_id` | `configOverrides.transfer.instance_id` | Empty generates a unique instance ID. |
+| `endpoints` | `configOverrides.transfer.endpoints` | Empty infers the generated Service DNS and RPC port. |
+| `cv_metadata_reader` | `configOverrides.transfer.cv_metadata_reader` | `auto`, which resolves to `replica`. |
+| `max_running_transfers` | `configOverrides.transfer.max_running_transfers` | `64`. |
+| `lease_timeout` | `configOverrides.transfer.lease_timeout` | `120s`. |
+| `terminal_retention` | `configOverrides.transfer.terminal_retention` | `168h`. |
+
+The pass-through also accepts the deprecated compatibility keys `store_type`,
+`sqlite_path`, and `mysql_url`; use `storeUrl` instead. Fields that the server
+marks as internal or derived are not configuration options in any deployment
+mode.
+
+The Transfer web endpoint exposes `/healthz`, `/readyz`, and `/metrics` on
+`transfer.webPort`. The RPC service listens on `transfer.rpcPort` inside the
+cluster.
+
 ## Verify
 
 Run these commands immediately after install or upgrade:

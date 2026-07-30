@@ -81,6 +81,22 @@ app.kubernetes.io/component: worker
 {{- end }}
 
 {{/*
+Transfer specific labels
+*/}}
+{{- define "curvine.transferLabels" -}}
+{{ include "curvine.labels" . }}
+app.kubernetes.io/component: transfer
+{{- end }}
+
+{{/*
+Transfer selector labels
+*/}}
+{{- define "curvine.transferSelectorLabels" -}}
+{{ include "curvine.selectorLabels" . }}
+app.kubernetes.io/component: transfer
+{{- end }}
+
+{{/*
 Master fullname
 */}}
 {{- define "curvine.masterFullname" -}}
@@ -109,6 +125,20 @@ Worker service name (headless)
 {{- end }}
 
 {{/*
+Transfer service name
+*/}}
+{{- define "curvine.transferServiceName" -}}
+{{- printf "%s-transfer" (include "curvine.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Transfer SQLite PVC name
+*/}}
+{{- define "curvine.transferDataClaimName" -}}
+{{- printf "%s-transfer-data" (include "curvine.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
 Extract S3 gateway port from listen address
 */}}
 {{- define "curvine.s3GatewayPort" -}}
@@ -132,6 +162,15 @@ Validate master replicas is odd number
 {{- define "curvine.validateMasterReplicas" -}}
 {{- if not (mod (int .Values.master.replicas) 2) }}
 {{- fail "master.replicas must be an odd number (1, 3, 5, 7...) for Raft consensus" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Multiple Transfer instances need a shared, transactional metadata store.
+*/}}
+{{- define "curvine.validateTransfer" -}}
+{{- if and .Values.transfer.enabled (gt (int .Values.transfer.replicas) 1) (not (hasPrefix "mysql://" .Values.transfer.storeUrl)) }}
+{{- fail "transfer.replicas > 1 requires transfer.storeUrl to use mysql://" }}
 {{- end }}
 {{- end }}
 

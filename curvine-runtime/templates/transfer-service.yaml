@@ -1,0 +1,22 @@
+{{- if .Values.transfer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "curvine.transferServiceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "curvine.transferLabels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: rpc
+      port: {{ .Values.transfer.rpcPort }}
+      targetPort: {{ .Values.transfer.rpcPort }}
+      protocol: TCP
+    - name: web
+      port: {{ .Values.transfer.webPort }}
+      targetPort: {{ .Values.transfer.webPort }}
+      protocol: TCP
+  selector:
+    {{- include "curvine.transferSelectorLabels" . | nindent 4 }}
+{{- end }}

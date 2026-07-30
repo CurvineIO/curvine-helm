@@ -235,11 +235,16 @@ worker:
 # Disabled by default to preserve existing Master and Worker deployments.
 transfer:
   enabled: false
-  # SQLite is inferred when empty. Use mysql://... before increasing replicas.
+  # SQLite is inferred when empty and stored on a chart-managed PVC.
+  # Use mysql://... before increasing replicas.
   storeUrl: ""
   replicas: 1
   rpcPort: 9010
   webPort: 9011
+
+  storage:
+    # Requested capacity for the default single-replica SQLite PVC.
+    size: "1Gi"
 
   resources:
     requests:

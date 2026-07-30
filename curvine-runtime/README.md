@@ -159,15 +159,23 @@ transfer:
   enabled: true
   storeUrl: ""
   replicas: 1
+  storage:
+    size: "1Gi"
   rpcPort: 9010
   webPort: 9011
 ```
 
 An empty `storeUrl` keeps Curvine's default single-instance SQLite store at
-`/app/curvine/data/transfer/transfer.db`. Its `emptyDir` survives a container
-restart in the same Pod but is not durable across Pod replacement. Use a MySQL
-URL for durable production operation. Multiple Transfer replicas require a
-shared MySQL store and the chart rejects other configurations:
+`/app/curvine/data/transfer/transfer.db`. The chart creates a `ReadWriteOnce`
+PVC and mounts it at that directory. It omits `storageClassName`, so Kubernetes
+uses the cluster default StorageClass. A cluster without a default StorageClass
+leaves the PVC Pending instead of silently using temporary storage. Multiple
+Transfer replicas require a shared MySQL store and the chart rejects other
+configurations:
+
+The SQLite Deployment uses `Recreate` to detach its `ReadWriteOnce` volume
+before a replacement Pod starts. Its PVC is retained by `helm uninstall`; delete
+it explicitly only when discarding the Transfer metadata.
 
 ```yaml
 transfer:
@@ -196,6 +204,7 @@ configOverrides:
 | --- | --- | --- |
 | `enabled` | `transfer.enabled` | `false`; creates no Transfer workload until enabled. |
 | `store_url` | `transfer.storeUrl` | Empty infers `sqlite://data/transfer/transfer.db`. |
+| SQLite PVC capacity | `transfer.storage.size` | `1Gi`; created only when `storeUrl` is empty and uses the default StorageClass. |
 | `hostname` | Generated | The internal Transfer Service DNS. |
 | `rpc_port` | `transfer.rpcPort` | `9010`. |
 | `web_port` | `transfer.webPort` | `9011`. |

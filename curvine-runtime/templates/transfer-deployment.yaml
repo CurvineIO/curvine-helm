@@ -8,6 +8,11 @@ metadata:
     {{- include "curvine.transferLabels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.transfer.replicas }}
+  {{- if not .Values.transfer.storeUrl }}
+  # SQLite uses one ReadWriteOnce PVC, so terminate the old Pod before replacement.
+  strategy:
+    type: Recreate
+  {{- end }}
   selector:
     matchLabels:
       {{- include "curvine.transferSelectorLabels" . | nindent 6 }}
@@ -70,14 +75,19 @@ spec:
               readOnly: true
             - name: logs
               mountPath: {{ .Values.config.log.logDir }}
+            {{- if not .Values.transfer.storeUrl }}
             - name: transfer-data
               mountPath: {{ include "curvine.home" . }}/data/transfer
+            {{- end }}
       volumes:
         - name: config
           configMap:
             name: {{ include "curvine.fullname" . }}-config
         - name: logs
           emptyDir: {}
+        {{- if not .Values.transfer.storeUrl }}
         - name: transfer-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: {{ include "curvine.transferDataClaimName" . }}
+        {{- end }}
 {{- end }}

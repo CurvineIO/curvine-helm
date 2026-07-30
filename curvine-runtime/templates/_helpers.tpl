@@ -132,6 +132,13 @@ Transfer service name
 {{- end }}
 
 {{/*
+Transfer SQLite PVC name
+*/}}
+{{- define "curvine.transferDataClaimName" -}}
+{{- printf "%s-transfer-data" (include "curvine.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
 Extract S3 gateway port from listen address
 */}}
 {{- define "curvine.s3GatewayPort" -}}

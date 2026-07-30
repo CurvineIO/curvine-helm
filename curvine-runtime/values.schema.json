@@ -303,6 +303,16 @@
           "minimum": 1,
           "maximum": 65535
         },
+        "storage": {
+          "type": "object",
+          "properties": {
+            "size": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": true
+        },
         "resources": {
           "$ref": "#/definitions/resources"
         }

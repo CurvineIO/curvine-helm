@@ -90,4 +90,8 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "curvine.transferDataClaimName" . }}
         {{- end }}
+      {{- with .Values.transfer.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 {{- end }}

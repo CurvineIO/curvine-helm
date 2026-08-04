@@ -309,12 +309,21 @@
             "size": {
               "type": "string",
               "minLength": 1
+            },
+            "storageClass": {
+              "type": "string"
             }
           },
           "additionalProperties": true
         },
         "resources": {
           "$ref": "#/definitions/resources"
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": true

@@ -245,6 +245,8 @@ transfer:
   storage:
     # Requested capacity for the default single-replica SQLite PVC.
     size: "1Gi"
+    # Empty means use the cluster default StorageClass.
+    storageClass: ""
 
   resources:
     requests:
@@ -253,6 +255,9 @@ transfer:
     limits:
       cpu: "1000m"
       memory: "2Gi"
+
+  # Node selector
+  nodeSelector: {}
 
 # Service configuration
 service:

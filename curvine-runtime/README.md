@@ -161,17 +161,19 @@ transfer:
   replicas: 1
   storage:
     size: "1Gi"
+    storageClass: ""  # Empty uses the cluster default StorageClass
   rpcPort: 9010
   webPort: 9011
 ```
 
 An empty `storeUrl` keeps Curvine's default single-instance SQLite store at
 `/app/curvine/data/transfer/transfer.db`. The chart creates a `ReadWriteOnce`
-PVC and mounts it at that directory. It omits `storageClassName`, so Kubernetes
-uses the cluster default StorageClass. A cluster without a default StorageClass
-leaves the PVC Pending instead of silently using temporary storage. Multiple
-Transfer replicas require a shared MySQL store and the chart rejects other
-configurations:
+PVC and mounts it at that directory. Leave `transfer.storage.storageClass`
+empty to omit `storageClassName` and use the cluster default StorageClass;
+set it to pin a specific class. A cluster without a matching or default
+StorageClass leaves the PVC Pending instead of silently using temporary
+storage. Multiple Transfer replicas require a shared MySQL store and the chart
+rejects other configurations:
 
 The SQLite Deployment uses `Recreate` to detach its `ReadWriteOnce` volume
 before a replacement Pod starts. Its PVC is retained by `helm uninstall`; delete
@@ -204,10 +206,12 @@ configOverrides:
 | --- | --- | --- |
 | `enabled` | `transfer.enabled` | `false`; creates no Transfer workload until enabled. |
 | `store_url` | `transfer.storeUrl` | Empty infers `sqlite://data/transfer/transfer.db`. |
-| SQLite PVC capacity | `transfer.storage.size` | `1Gi`; created only when `storeUrl` is empty and uses the default StorageClass. |
+| SQLite PVC capacity | `transfer.storage.size` | `1Gi`; created only when `storeUrl` is empty. |
+| SQLite PVC StorageClass | `transfer.storage.storageClass` | Empty omits `storageClassName` (cluster default); set to pin a class. |
 | `hostname` | Generated | The internal Transfer Service DNS. |
 | `rpc_port` | `transfer.rpcPort` | `9010`. |
 | `web_port` | `transfer.webPort` | `9011`. |
+| Node selector | `transfer.nodeSelector` | `{}`; same semantics as master/worker. |
 | `instance_id` | `configOverrides.transfer.instance_id` | Empty generates a unique instance ID. |
 | `endpoints` | `configOverrides.transfer.endpoints` | Empty infers the generated Service DNS and RPC port. |
 | `cv_metadata_reader` | `configOverrides.transfer.cv_metadata_reader` | `auto`, which resolves to `replica`. |

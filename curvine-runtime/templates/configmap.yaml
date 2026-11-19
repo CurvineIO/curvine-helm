@@ -110,7 +110,6 @@ data:
     web_port = {{ .Values.worker.webPort }}
     data_dir = {{ include "curvine.workerDataDirs" . | trim }}
     enable_s3_gateway = {{ .Values.worker.s3Gateway.enabled | default false }}
-    enable_distributed_auth = {{ .Values.worker.s3Gateway.enableDistributedAuth | default true }}
     {{- if .Values.configOverrides.worker }}
     {{- range $key, $value := .Values.configOverrides.worker }}
     {{- if not (and $.Values.config.log.console (eq $key "log.log_dir")) }}
@@ -125,6 +124,9 @@ data:
     [s3_gateway]
     enable = {{ .Values.worker.s3Gateway.enabled | default false }}
     listen = "{{ .Values.worker.s3Gateway.listen }}"
+    # S3GatewayConf reads this key here, not under [worker]. No `default`: it
+    # would turn an explicit false into true; values.yaml already defaults to true.
+    enable_distributed_auth = {{ .Values.worker.s3Gateway.enableDistributedAuth }}
     {{- if .Values.worker.s3Gateway.enabled }}
     # Use Curvine filesystem for multipart upload part files to enable distributed access
     put_temp_dir = "/system/s3-temp"

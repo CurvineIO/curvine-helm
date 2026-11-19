@@ -352,6 +352,7 @@ kubectl get events -n curvine --sort-by='.lastTimestamp'
 - `helm uninstall` removes workloads but leaves StatefulSet PVCs behind
 - `master.replicas` must stay stable across in-place upgrades
 - Logs are often not useful for `Pending` Pods because containers may never start
+- Worker data dirs with `type: MEM` and no `hostPath` use an `emptyDir` with `medium: Memory` (tmpfs) sized by `size`; that memory counts toward the worker container memory limit and is lost when the Pod restarts
 
 ## Support
 

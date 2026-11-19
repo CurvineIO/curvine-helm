@@ -191,7 +191,18 @@ worker:
       #   storageClass: ""
       #   hostPath: "/mnt/hdd1"
       #   mountPath: "/data/data2"
-  
+
+      # Memory-backed data directory. With type "MEM" and no hostPath, the chart
+      # mounts an emptyDir with medium: Memory (tmpfs) limited to `size`.
+      # Memory written here counts toward the worker container memory limit,
+      # so raise worker.resources.limits.memory to cover it.
+      # - name: "mem"
+      #   type: "MEM"
+      #   enabled: true
+      #   size: "4Gi"
+      #   hostPath: ""
+      #   mountPath: "/data/mem"
+
   # Resource requests and limits
   resources:
     requests:

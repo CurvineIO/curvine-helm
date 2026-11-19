@@ -163,6 +163,14 @@ spec:
           hostPath:
             path: {{ .hostPath }}
             type: DirectoryOrCreate
+        {{- else if eq (upper (.type | default "SSD")) "MEM" }}
+        # Memory-backed (tmpfs) data dir; usage counts toward the container memory limit
+        - name: {{ .name }}
+          emptyDir:
+            medium: Memory
+            {{- with .size }}
+            sizeLimit: {{ . }}
+            {{- end }}
         {{- end }}
         {{- end }}
         {{- end }}
@@ -186,14 +194,14 @@ spec:
       {{- end }}
   {{- $hasDataDirs := false }}
   {{- range .Values.worker.storage.dataDirs }}
-  {{- if and .enabled (not .hostPath) }}
+  {{- if and .enabled (not .hostPath) (ne (upper (.type | default "SSD")) "MEM") }}
   {{- $hasDataDirs = true }}
   {{- end }}
   {{- end }}
   {{- if $hasDataDirs }}
   volumeClaimTemplates:
     {{- range .Values.worker.storage.dataDirs }}
-    {{- if and .enabled (not .hostPath) }}
+    {{- if and .enabled (not .hostPath) (ne (upper (.type | default "SSD")) "MEM") }}
     - metadata:
         name: {{ .name }}
         labels:

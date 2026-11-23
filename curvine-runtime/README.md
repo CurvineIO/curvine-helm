@@ -149,10 +149,14 @@ Do not use the production or bare-metal examples unchanged on a generic cluster.
 
 ## Transfer Service
 
-Set `transfer.enabled=true` to deploy the standalone Transfer service. The chart
-creates an internal `ClusterIP` service and writes its Kubernetes DNS name into
-`[transfer].hostname`; Curvine then infers the client and Worker RPC endpoint.
-No `transfer.endpoints` value is required.
+By default (`transfer.enabled=false`) the chart creates no Transfer workload and
+Curvine runs the Transfer service inside the Master, with an in-memory job store.
+
+Set `transfer.enabled=true` to deploy the standalone Transfer service instead.
+The chart creates an internal `ClusterIP` service and writes
+`mode = "standalone"` and `endpoints = ["<Service DNS>:<rpcPort>"]` into
+`[transfer]`, so the Master, Workers and clients all use that service. No
+`transfer.endpoints` value is required.
 
 ```yaml
 transfer:
@@ -188,8 +192,9 @@ transfer:
 
 `transfer.enabled`/`storeUrl`/`replicas`/`rpcPort`/`webPort` are chart-managed:
 the generated Service, Deployment and `[transfer]` configuration always use the
-same values. The hostname is always the generated Kubernetes Service DNS. Do
-not set these keys under `configOverrides.transfer`.
+same values. The hostname is always the generated Kubernetes Service DNS, and
+`mode` follows `transfer.enabled`. Do not set these keys or `mode` under
+`configOverrides.transfer`.
 
 All other supported `[transfer]` settings use the existing pass-through map:
 
@@ -204,8 +209,8 @@ configOverrides:
 
 | `[transfer]` parameter | Helm setting | Default and behavior |
 | --- | --- | --- |
-| `enabled` | `transfer.enabled` | `false`; creates no Transfer workload until enabled. |
-| `store_url` | `transfer.storeUrl` | Empty infers `sqlite://data/transfer/transfer.db`. |
+| `mode` | `transfer.enabled` | `false` leaves it unset: transfer runs inside the Master and no Transfer workload is created. `true` writes `standalone`. |
+| `store_url` | `transfer.storeUrl` | Written only when `transfer.enabled=true`; empty infers `sqlite://data/transfer/transfer.db`. Transfer inside the Master always uses the in-memory store. |
 | SQLite PVC capacity | `transfer.storage.size` | `1Gi`; created only when `storeUrl` is empty. |
 | SQLite PVC StorageClass | `transfer.storage.storageClass` | Empty omits `storageClassName` (cluster default); set to pin a class. |
 | `hostname` | Generated | The internal Transfer Service DNS. |
@@ -213,11 +218,11 @@ configOverrides:
 | `web_port` | `transfer.webPort` | `9011`. |
 | Node selector | `transfer.nodeSelector` | `{}`; same semantics as master/worker. |
 | `instance_id` | `configOverrides.transfer.instance_id` | Empty generates a unique instance ID. |
-| `endpoints` | `configOverrides.transfer.endpoints` | Empty infers the generated Service DNS and RPC port. |
+| `endpoints` | `configOverrides.transfer.endpoints` | With `transfer.enabled=true`, empty writes the generated Service DNS and RPC port. |
 | `cv_metadata_reader` | `configOverrides.transfer.cv_metadata_reader` | `auto`, which resolves to `replica`. |
 | `max_running_transfers` | `configOverrides.transfer.max_running_transfers` | `64`. |
 | `lease_timeout` | `configOverrides.transfer.lease_timeout` | `120s`. |
-| `terminal_retention` | `configOverrides.transfer.terminal_retention` | `168h`. |
+| `terminal_retention` | `configOverrides.transfer.terminal_retention` | `168h` with `transfer.enabled=true`; `10m` for transfer inside the Master. |
 
 The pass-through also accepts the deprecated compatibility keys `store_type`,
 `sqlite_path`, and `mysql_url`; use `storeUrl` instead. Fields that the server

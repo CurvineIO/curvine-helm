@@ -232,11 +232,11 @@ worker:
   extraVolumeMounts: []
 
 # Standalone Transfer service configuration.
-# Disabled by default to preserve existing Master and Worker deployments.
+# Disabled by default: Curvine then runs transfer inside the Master.
 transfer:
   enabled: false
-  # SQLite is inferred when empty and stored on a chart-managed PVC.
-  # Use mysql://... before increasing replicas.
+  # Used only when enabled. SQLite is inferred when empty and stored on a
+  # chart-managed PVC. Use mysql://... before increasing replicas.
   storeUrl: ""
   replicas: 1
   rpcPort: 9010

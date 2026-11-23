@@ -147,14 +147,23 @@ data:
     {{- end }}
 
     [transfer]
-    enabled = {{ .Values.transfer.enabled }}
+    {{- $transferOverrides := .Values.configOverrides.transfer | default dict }}
+    {{- if .Values.transfer.enabled }}
+    {{- /* Without endpoints Curvine runs transfer inside the master, so name the chart's Service explicitly. */}}
+    mode = "standalone"
+    {{- if not (hasKey $transferOverrides "endpoints") }}
+    endpoints = ["{{ include "curvine.transferServiceName" . }}.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }}:{{ .Values.transfer.rpcPort }}"]
+    {{- end }}
+    {{- end }}
     hostname = "{{ include "curvine.transferServiceName" . }}.{{ .Release.Namespace }}.svc.{{ .Values.global.clusterDomain }}"
     rpc_port = {{ .Values.transfer.rpcPort }}
     web_port = {{ .Values.transfer.webPort }}
+    {{- if .Values.transfer.enabled }}
     {{- with .Values.transfer.storeUrl }}
     store_url = {{ . | quote }}
     {{- end }}
-    {{- $managedTransferKeys := list "enabled" "hostname" "rpc_port" "web_port" "store_url" }}
+    {{- end }}
+    {{- $managedTransferKeys := list "enabled" "mode" "hostname" "rpc_port" "web_port" "store_url" }}
     {{- if .Values.configOverrides.transfer }}
     {{- range $key, $value := .Values.configOverrides.transfer }}
     {{- if has $key $managedTransferKeys }}

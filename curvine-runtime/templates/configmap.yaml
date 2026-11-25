@@ -40,7 +40,6 @@ data:
     cluster_id = "{{ .Values.cluster.id }}"
     format_master = {{ .Values.cluster.formatMaster | default false }}
     format_worker = {{ .Values.cluster.formatWorker | default false }}
-    enable_s3_gateway = {{ .Values.worker.s3Gateway.enabled | default false }}
     {{- $logDir := .Values.config.log.logDir }}
     {{- if .Values.config.log.console }}
     {{- $logDir = "stdout" }}
@@ -69,11 +68,9 @@ data:
     {{- end }}
 
     [master]
-    rpc_host = "0.0.0.0"
     meta_dir = "{{ $metaDir }}"
     rpc_port = {{ .Values.master.rpcPort }}
     web_port = {{ .Values.master.webPort }}
-    web1_port = {{ .Values.master.web1Port }}
     {{- if .Values.configOverrides.master }}
     {{- range $key, $value := .Values.configOverrides.master }}
     {{- if not (and $.Values.config.log.console (eq $key "log.log_dir")) }}
@@ -105,7 +102,6 @@ data:
     {{- end }}
 
     [worker]
-    rpc_host = "0.0.0.0"
     rpc_port = {{ .Values.worker.rpcPort }}
     web_port = {{ .Values.worker.webPort }}
     data_dir = {{ include "curvine.workerDataDirs" . | trim }}
@@ -123,7 +119,6 @@ data:
     {{- end }}
 
     [s3_gateway]
-    enable = {{ .Values.worker.s3Gateway.enabled | default false }}
     listen = "{{ .Values.worker.s3Gateway.listen }}"
     {{- if .Values.worker.s3Gateway.enabled }}
     # Use Curvine filesystem for multipart upload part files to enable distributed access

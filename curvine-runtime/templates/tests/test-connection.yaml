@@ -17,6 +17,8 @@ spec:
         - sh
         - -c
         - |
+          # An unreachable master fails the test; workers are best-effort.
+          set -e
           echo "Testing Master node connections..."
           {{- range $i := until (int .Values.master.replicas) }}
           echo "Testing {{ include "curvine.masterFullname" $ }}-{{ $i }}..."
@@ -26,7 +28,7 @@ spec:
           echo "Testing Worker node connections..."
           {{- range $i := until (int .Values.worker.replicas) }}
           echo "Testing {{ include "curvine.workerFullname" $ }}-{{ $i }}..."
-          nc -zv {{ include "curvine.workerFullname" $ }}-{{ $i }}.{{ include "curvine.workerServiceName" $ }}.{{ $.Release.Namespace }}.svc.{{ $.Values.global.clusterDomain }} {{ $.Values.worker.rpcPort }} || true
+          nc -zv {{ include "curvine.workerFullname" $ }}-{{ $i }}.{{ include "curvine.workerServiceName" $ }}.{{ $.Release.Namespace }}.svc.{{ $.Values.global.clusterDomain }} {{ $.Values.worker.rpcPort }} || echo "WARN: {{ include "curvine.workerFullname" $ }}-{{ $i }} is not reachable"
           {{- end }}
           
           echo "All connection tests completed successfully!"

@@ -190,8 +190,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-  {{- if and (not .Values.master.storage.meta.hostPath) (not .Values.master.storage.journal.hostPath) }}
+  {{- /* Each directory without a hostPath gets its own PVC, so meta and
+         journal can use different storage (e.g. meta on a hostPath and
+         journal on a PVC); both are always mounted. */}}
+  {{- $metaPvc := not .Values.master.storage.meta.hostPath }}
+  {{- $journalPvc := not .Values.master.storage.journal.hostPath }}
+  {{- if or $metaPvc $journalPvc }}
   volumeClaimTemplates:
+    {{- if $metaPvc }}
     - metadata:
         name: meta
         labels:
@@ -205,6 +211,8 @@ spec:
         resources:
           requests:
             storage: {{ .Values.master.storage.meta.size }}
+    {{- end }}
+    {{- if $journalPvc }}
     - metadata:
         name: journal
         labels:
@@ -218,4 +226,5 @@ spec:
         resources:
           requests:
             storage: {{ .Values.master.storage.journal.size }}
+    {{- end }}
   {{- end }}
